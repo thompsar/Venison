@@ -1,7 +1,12 @@
 from bokeh.plotting import figure
 from src.mycolors import mycolors
+import numpy as np
+from bokeh.palettes import Category10_10 as palette
+import itertools  
 
-def spec_plot(datalist,colorlist=None,**kwargs):
+
+##Need to reimplement colorlist for certain uses? (post implementing pallete)
+def spec_plot(xs,ys,colorlist=None,**kwargs):
     golden=1.61803
     height=400
     #plot_width=int(height*golden)
@@ -29,11 +34,17 @@ def spec_plot(datalist,colorlist=None,**kwargs):
     myplot.yaxis.major_label_text_font='helvetica'
     myplot.yaxis.major_label_text_font_size='16pt'
 
-    if not colorlist: #if colorlist is not present, use default scheme
-        for i in range(int(len(datalist)/2)):
-            myplot.line(datalist[i*2],datalist[i*2+1], color=mycolors(i), line_width=1)
-        return myplot
-    else:
-        for i in range(int(len(datalist)/2)):
-            myplot.line(datalist[i*2],datalist[i*2+1], color=colorlist[i], line_width=1)
-        return myplot
+    colors = itertools.cycle(palette)  
+    
+    
+    if (type(xs) == list) & (type(ys) == list):
+        for i, color in zip(range(len(xs)),colors):
+            myplot.line(xs[i],ys[i],line_width = 1, color = color)
+    elif (type(xs) == np.ndarray) & (type(ys) == np.ndarray):
+        try:
+            for i, color in zip(range(xs.T.shape[1]),colors):
+                myplot.line(xs[i,:],ys[i,:],line_width = 1, color = color)
+        except IndexError:
+                myplot.line(xs,ys,line_width = 1, color = next(colors))
+    return myplot
+    

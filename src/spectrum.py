@@ -3,6 +3,8 @@ import multiprocessing as mp
 from multiprocessing import Pool, cpu_count
 from scipy import optimize
 
+from src.background_models import bg3D
+
 class spectrum():
     """Class that loads and parses Bruker spectrum files, assumes DTA and DSC files present
     
@@ -65,7 +67,7 @@ class spectrum():
         self.dt = self.metadata['XWID']/(self.metadata['XPTS']-1)/1000 #delta t in µs
         self.raw_time=(np.arange(self.metadata['XPTS'])*self.dt+self.metadata['XMIN']/1000) #Time axis of raw data in µs
         self.cutoff =self.raw_time[-1] #aribitrary start of cutoff
-        self.background = self.raw_time[int(self.raw_time.size/2)] #arbitrary choice of start of background region
+        self.background_start = self.raw_time[int(self.raw_time.size/2)] #arbitrary choice of start of background region
         
         self.slice_mask = np.ones(self.metadata['YPTS'],dtype=bool)
         
@@ -137,9 +139,19 @@ class spectrum():
         
         self.nnls_solutions = np.zeros([self.alphas.shape[0],self.kernel.shape[1]])
     
-    def background_correct(self,background_curve_full):
-        background = background_curve_full[self.waveform_range]
+    def fit_background(self,model,background_range):
+        bgfit=optimize.curve_fit(model,self.raw_time[background_range],
+                         self.real[background_range])[0]
+        self.background = model(self.raw_time,*bgfit)
+        return self.background
         
+    
+    def background_correct(self,background = None):
+        if background is None:
+            background = self.background[self.waveform_range]
+        else:
+            background = background[self.waveform_range]
+            
         self.normamp=(self.zeroamp-background[0])/(background[0])
         self.waveform=(self.real[self.waveform_range]-background)/background
         self.waveform=self.waveform/self.normamp
@@ -149,6 +161,7 @@ class spectrum():
         
         if self.kernel.shape[0]!=self.waveform.shape[0]:
             self.resize_kernel()
+        return self.waveform
             
         
         
@@ -163,8 +176,8 @@ class spectrum():
         self.waveform_range = range(abs(self.raw_time-self.zeropoint).argmin(),
                        abs(self.raw_time-self.cutoff).argmin()+1) #plus one to account for non-inclusive indexing
         
-        self.background_range = range(abs(self.raw_time-self.background).argmin(),
-                         abs(self.raw_time-self.cutoff).argmin())
+        self.background_range = range(abs(self.raw_time-self.background_start).argmin(),
+                         abs(self.raw_time-self.cutoff).argmin()+1)
         
         
     def regularize(self, alpha):
@@ -180,3 +193,32 @@ class spectrum():
         
         self.tikhonovfits = np.dot(self.kernel,self.solutions.T).T #generate all the spectra from solutions
         self.tikhonovfits = self.tikhonovfits/self.tikhonovfits[:,0][:,np.newaxis] #use broadcasting to normalize solutions
+        
+    def validate_background(self, background_start = 0.2 , n_backgrounds = 100, end_offset = 30):
+        
+        """Determine optimal background function
+    
+        Parameters
+        ----------
+        background_start: starting position for bg validation
+        n_backgrounds: number of unique backgrounds to test
+        end_offset: offset (in int index) from cuttoff point, want >1
+
+        """
+
+        cutindex = abs(self.raw_time-self.cutoff).argmin()
+        bgstartindex = abs(self.raw_time-background_start).argmin()
+
+        bgstepsize = np.floor((cutindex - end_offset - bgstartindex)/(n_backgrounds))
+        if bgstepsize == 0:
+            bgstepsize = 1
+
+        bgpositions = range(bgstartindex, self.background_range[-1] + 1 - end_offset, int(bgstepsize))
+
+        self.backgrounds = np.array([self.fit_background(bg3D,range(i,self.background_range[-1]+1)) for i in bgpositions])
+        self.waveforms = np.array([self.background_correct(background) for background in self.backgrounds])
+
+        #return to user selected background/waveform...there is probably a better way to handle all this.
+        self.update_ranges()
+        self.fit_background(bg3D,self.background_range)
+        self.background_correct()
