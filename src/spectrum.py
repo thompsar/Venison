@@ -6,7 +6,7 @@ from scipy import optimize
 from src.background_models import bg3D
 
 class spectrum():
-    """Class that loads and parses Bruker spectrum files, assumes DTA and DSC files present
+    """Class that loads and parses Bruker DEER spectrum files, assumes DTA and DSC files present
     
     Parameters
     ----------
@@ -180,13 +180,18 @@ class spectrum():
                          abs(self.raw_time-self.cutoff).argmin()+1)
         
         
-    def regularize(self, alpha):
+    def alpha_regularize(self, alpha):
         return optimize.nnls(np.concatenate([self.kernel,alpha*self.Lmatrix]),self.bvector)[0]
+    
+    def waveform_regularize(self, waveform):
+        return optimize.nnls(np.concatenate([self.kernel,self.alpha*self.Lmatrix]),
+                             np.concatenate([waveform,
+                                       np.zeros(self.Lmatrix.shape[0])]))[0]
     
     def generate_lcurve(self):
         
         pool = mp.Pool()
-        results = [pool.apply_async(self.regularize, args=(alpha,)) for alpha in self.alphas]
+        results = [pool.apply_async(self.alpha_regularize, args=(alpha,)) for alpha in self.alphas]
         self.solutions = [p.get() for p in results]
         self.solutions=np.array(self.solutions)
         pool.close()
@@ -196,7 +201,7 @@ class spectrum():
         
     def validate_background(self, background_start = 0.2 , n_backgrounds = 100, end_offset = 30):
         
-        """Determine optimal background function
+        """Determine optimal background fit
     
         Parameters
         ----------
@@ -208,6 +213,7 @@ class spectrum():
 
         cutindex = abs(self.raw_time-self.cutoff).argmin()
         bgstartindex = abs(self.raw_time-background_start).argmin()
+        
 
         bgstepsize = np.floor((cutindex - end_offset - bgstartindex)/(n_backgrounds))
         if bgstepsize == 0:
@@ -215,9 +221,20 @@ class spectrum():
 
         bgpositions = range(bgstartindex, self.background_range[-1] + 1 - end_offset, int(bgstepsize))
 
+        self.background_fit_points = self.raw_time[bgpositions]
+        
         self.backgrounds = np.array([self.fit_background(bg3D,range(i,self.background_range[-1]+1)) for i in bgpositions])
         self.waveforms = np.array([self.background_correct(background) for background in self.backgrounds])
 
+        pool = mp.Pool()
+        results = [pool.apply_async(self.waveform_regularize, args=(waveform,)) for waveform in self.waveforms]
+        self.validation_solutions = [p.get() for p in results]
+        self.validation_solutions = np.array(self.validation_solutions)
+        pool.close()
+        
+        self.validation_tikhonovfits = np.dot(self.kernel,self.validation_solutions.T).T #generate all the spectra from solutions
+        self.validation_tikhonovfits = self.validation_tikhonovfits/self.validation_tikhonovfits[:,0][:,np.newaxis] #use broadcasting to normalize solutions
+        
         #return to user selected background/waveform...there is probably a better way to handle all this.
         self.update_ranges()
         self.fit_background(bg3D,self.background_range)
