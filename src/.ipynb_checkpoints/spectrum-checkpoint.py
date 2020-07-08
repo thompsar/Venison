@@ -75,7 +75,7 @@ class spectrum():
         
     def set_defaults(self):
         self.dimensions = 512
-        self.rmin = 1.5
+        self.rmin = 1.0
         self.rmax = 10
         
         self.alphas = np.logspace(-4,6, 51)
