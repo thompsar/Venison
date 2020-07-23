@@ -239,3 +239,25 @@ class spectrum():
         self.update_ranges()
         self.fit_background(bg3D,self.background_range)
         self.background_correct()
+    
+    def gaussian_model_init(self, ngauss = 5):
+        """
+        initializes structure for storing gaussian model parameters
+        creates gaussian_models np array
+        """
+        self.gaussian_models = np.zeros((ngauss,ngauss,3)) #of the form r, s, a
+        initial_r = self.r[np.linspace(100,400,ngauss,dtype=int)]
+        
+        #initialize
+        for model in range(ngauss):
+            for ith_gauss in range(model+1):
+                self.gaussian_models[model,ith_gauss,:] = np.array([initial_r[ith_gauss],.1,.1])
+                
+    def gaussian_model(self,model):
+        return self.gaussian_models[model,:model+1,:]
+    
+    def model_waveform(self,model_func,coeff):
+        
+        self.model_fit = np.dot(self.kernel,model_func(self.r,coeff))
+        self.model_fit = self.model_fit/self.model_fit[0]
+        return self.model_fit

@@ -6,7 +6,7 @@ import itertools
 
 
 ##Need to reimplement colorlist for certain uses? (post implementing pallete)
-def spec_plot(xs,ys,colorlist=None,**kwargs):
+def spec_plot(xs = None ,ys = None ,colorlist=None,**kwargs):
     golden=1.61803
     height=400
     #plot_width=int(height*golden)
@@ -36,15 +36,17 @@ def spec_plot(xs,ys,colorlist=None,**kwargs):
 
     colors = itertools.cycle(palette)  
     
+    #this needs some serious cleaning/reworking
+    if xs is not None and ys is not None:
     
-    if (type(xs) == list) & (type(ys) == list):
-        for i, color in zip(range(len(xs)),colors):
-            myplot.line(xs[i],ys[i],line_width = 1, color = color)
-    elif (type(xs) == np.ndarray) & (type(ys) == np.ndarray):
-        try:
-            for i, color in zip(range(xs.T.shape[1]),colors):
-                myplot.line(xs[i,:],ys[i,:],line_width = 1, color = color)
-        except IndexError:
-                myplot.line(xs,ys,line_width = 1, color = next(colors))
+        if (type(xs) == list) & (type(ys) == list):
+            for i, color in zip(range(len(xs)),colors):
+                myplot.line(xs[i],ys[i],line_width = 1, color = color)
+        elif (type(xs) == np.ndarray) & (type(ys) == np.ndarray):
+            try:
+                for i, color in zip(range(xs.T.shape[1]),colors):
+                    myplot.line(xs[i,:],ys[i,:],line_width = 1, color = color)
+            except IndexError:
+                    myplot.line(xs,ys,line_width = 1, color = next(colors))
     return myplot
     
