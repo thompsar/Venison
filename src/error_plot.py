@@ -9,10 +9,11 @@ def error_plot(landscape,statistics,cutoffs = [0.95,0.75,0.6], refresh = False):
     
     error_surface_plot = figure(plot_width = 600, 
                                 plot_height=600,
-                                x_range = (
-                                    np.floor(landscape[:,:,0].min()),
-                                    np.ceil(landscape[:,:,0].max())
-                                )
+                                x_range = (2,7)
+#                                 x_range = (
+#                                     np.floor(landscape[:,:,0].min()),
+#                                     np.ceil(landscape[:,:,0].max())
+#                                 )
                                )
 
     error_surface_plot.xaxis.axis_label="Gaussian Center (nm)"
@@ -56,7 +57,8 @@ def error_plot(landscape,statistics,cutoffs = [0.95,0.75,0.6], refresh = False):
         return sub_plot
 
     axes_labels = ['r (nm)','σ (nm)','Mole Fraction']
-    xranges = ((np.floor(landscape[:,:,0].min()),np.ceil(landscape[:,:,0].max())),(0,1),(0,1))
+#     xranges = ((np.floor(landscape[:,:,0].min()),np.ceil(landscape[:,:,0].max())),(0,1),(0,1))
+    xranges = xranges = ((2,7),(0,1),(0,1))
     yranges = (0,1)
 
     surface = gridplot([[error_surface_plot]])
