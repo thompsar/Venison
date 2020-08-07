@@ -3,7 +3,7 @@ import multiprocessing as mp
 from multiprocessing import Pool, cpu_count
 from scipy import optimize
 
-from src.background_models import bg3D
+from src.background_models import bg3D,bgFractal
 
 class spectrum():
     """Class that loads and parses Bruker DEER spectrum files, assumes DTA and DSC files present
@@ -140,9 +140,22 @@ class spectrum():
         self.nnls_solutions = np.zeros([self.alphas.shape[0],self.kernel.shape[1]])
     
     def fit_background(self,model,background_range):
-        bgfit=optimize.curve_fit(model,self.raw_time[background_range],
-                         self.real[background_range])[0]
-        self.background = model(self.raw_time,*bgfit)
+        ###CLEAN ME UP!!
+        #Dont need to pass model if it's stored in self, which it currently is. Fix!!
+        if self.bgmodel == bgFractal:
+            try:
+                bgfit=optimize.curve_fit(model,self.raw_time[background_range],
+                             self.real[background_range], bounds=[[0,0,1],[np.inf,np.inf,5]])[0]
+                self.background = model(self.raw_time,*bgfit)
+            except RuntimeError:
+                print("Had to use 3D for this set of conditions")
+                bgfit=optimize.curve_fit(bg3D,self.raw_time[background_range],
+                                     self.real[background_range])[0]
+                self.background = bg3D(self.raw_time,*bgfit)
+        else:
+            bgfit=optimize.curve_fit(model,self.raw_time[background_range],
+                                     self.real[background_range])[0]
+            self.background = model(self.raw_time,*bgfit)
         return self.background
         
     
@@ -199,7 +212,7 @@ class spectrum():
         self.tikhonovfits = np.dot(self.kernel,self.solutions.T).T #generate all the spectra from solutions
         self.tikhonovfits = self.tikhonovfits/self.tikhonovfits[:,0][:,np.newaxis] #use broadcasting to normalize solutions
         
-    def validate_background(self, background_start = 0.2 , n_backgrounds = 100, end_offset = 30):
+    def validate_background(self, background_start = 0.2 , n_backgrounds = 100, end_offset = 50):
         
         """Determine optimal background fit
     
@@ -223,7 +236,8 @@ class spectrum():
 
         self.background_fit_points = self.raw_time[bgpositions]
         
-        self.backgrounds = np.array([self.fit_background(bg3D,range(i,self.background_range[-1]+1)) for i in bgpositions])
+#         self.backgrounds = np.array([self.fit_background(bg3D,range(i,self.background_range[-1]+1)) for i in bgpositions])
+        self.backgrounds = np.array([self.fit_background(self.bgmodel,range(i,self.background_range[-1]+1)) for i in bgpositions])
         self.waveforms = np.array([self.background_correct(background) for background in self.backgrounds])
 
         pool = mp.Pool()
@@ -237,7 +251,8 @@ class spectrum():
         
         #return to user selected background/waveform...there is probably a better way to handle all this.
         self.update_ranges()
-        self.fit_background(bg3D,self.background_range)
+#         self.fit_background(bg3D,self.background_range)
+        self.fit_background(self.bgmodel,self.background_range)
         self.background_correct()
     
     def gaussian_model_init(self, ngauss = 5):
