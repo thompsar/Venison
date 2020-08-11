@@ -53,7 +53,7 @@ def monte_carlo_error(model_func,data, origin, weights, iterations = 40000, stat
     
     #convert amplitude to normalized mole fraction. Doesnt materially affect resultant waveform, differences are in machine precision.
     ####this is of course gaussian model specific! Whatch out####
-    model_landscape[:,:,2] = model_landscape[:,:,2]/np.sum(model_landscape[:,:,2],axis=1)[:,np.newaxis]
+    #model_landscape[:,:,2] = model_landscape[:,:,2]/np.sum(model_landscape[:,:,2],axis=1)[:,np.newaxis]
     
     
     return model_landscape, landscape_statistics

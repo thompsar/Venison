@@ -3,8 +3,12 @@ from bokeh.plotting import figure,show
 from bokeh.layouts import column, row, gridplot
 import numpy as np
 
-def error_plot(landscape,statistics,cutoffs = [0.95,0.75,0.6], refresh = False):
+def error_plot(landscape,statistics,cutoffs = [0.95,0.75,0.6], refresh = False, norm_constants = None):
 
+    if norm_constants is not None:
+        #Properly normalize, convert amplitudes to mole fractions
+        landscape[:,:,2] = np.sqrt(2*np.pi)*landscape[:,:,1]*landscape[:,:,2]/norm_constants[:,None]
+    
     __, npop, nparams = landscape.shape
     
     error_surface_plot = figure(plot_width = 600, 
