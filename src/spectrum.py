@@ -1,7 +1,9 @@
 import numpy as np
+from numpy.random import default_rng
 import multiprocessing as mp
 from multiprocessing import Pool, cpu_count
 from scipy import optimize
+from scipy.stats import f as ftest
 
 from src.background_models import bg3D,bgFractal
 
@@ -276,3 +278,72 @@ class spectrum():
         self.model_fit = np.dot(self.kernel,model_func(self.r,coeff))
         self.model_fit = self.model_fit/self.model_fit[0]
         return self.model_fit
+    
+    
+    
+    def model_func(self, x):
+        def gaussians(x,coeffs):
+            #coeffs in form of [[ngauss,3]] and component order r,s,a
+            peaks = (coeffs[:,2]*np.exp(-((x[:,np.newaxis]-coeffs[:,0])**2/(2*coeffs[:,1]**2)))).T
+            return np.sum(peaks,axis = 0)
+        
+        #to get around pickling issues with lambda functions
+        return self.model_waveform(gaussians,x)
+    
+    
+    
+    def monte_carlo(self,model_func,data, origin, weights, iterations, stat_cutoff):
+        #the acutal monte carlo function for searching the error space
+
+        rng = default_rng()
+        n_pop, n_params = origin.shape
+        random_hops = rng.standard_normal((iterations,n_pop,n_params))*weights
+
+        landscape_RSS = np.ones(iterations)
+        model_landscape = np.zeros((iterations,n_pop,n_params))
+
+        origin_RSS = np.linalg.norm(data - model_func(origin))
+        model_DOF = len(data) - np.prod((n_pop,n_params))
+
+        new_hop = origin
+
+        for idx, hop in enumerate(random_hops):
+
+            hop_RSS = np.linalg.norm(data - model_func(new_hop))
+            landscape_RSS[idx] = hop_RSS
+            model_landscape[idx] = new_hop
+
+            if ftest.cdf(hop_RSS/origin_RSS,model_DOF,model_DOF) > stat_cutoff:
+                new_hop = abs(origin+hop) #prevent negative values, particularly in amp
+            else:
+                new_hop = abs(new_hop+hop) #prevent negative values, particularly in amp
+
+
+        landscape_statistics = ftest.cdf(landscape_RSS/origin_RSS,model_DOF,model_DOF)
+        return model_landscape, landscape_statistics
+            
+        
+    
+    def monte_carlo_error(self,data, origin, weights, iterations = 40000, stat_cutoff = 0.95):
+        
+        partial_iterations = iterations//cpu_count()
+        
+        pool = mp.Pool()
+        results = [pool.apply_async(self.monte_carlo, 
+                                    args = (self.model_func, 
+                                            data, 
+                                            origin, 
+                                            weights,
+                                            partial_iterations, 
+                                            stat_cutoff,)) for cpu in range(cpu_count())]
+        solutions = [p.get() for p in results]
+        pool.close()
+        
+        landscape_statistics = np.array([solution[1] for solution in solutions]).flatten()
+        model_landscape = np.array([solution[0] for solution in solutions]).reshape(len(landscape_statistics),*weights.shape)
+
+        
+        self.landscape_statistics = landscape_statistics
+        self.model_landscape = model_landscape
+        return
+        
