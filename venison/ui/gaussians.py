@@ -28,7 +28,7 @@ class GaussiansTab(Tab):
 
         p_dist = plot(DISTANCE_LABEL, "P(r)", height=300)
         line(p_dist, spec.r, spec.stable_solution, COLORS["muted"])
-        self._seeds = points(p_dist, [], [], color="#C0392B", size=9)
+        self._seeds = points(p_dist, [], [], color=COLORS["ink"], size=9)
         self._model_dist = line(p_dist, spec.r, spec.r * 0, COLORS["fit"], width=2)
 
         stable_rmsd = float(np.sqrt(np.mean((spec.stable_waveform - spec.stable_fit) ** 2)) * 1e2)
@@ -39,7 +39,8 @@ class GaussiansTab(Tab):
                                line_color=COLORS["ink"], line_width=1))
         self._rmsd_line = line(p_rmsd, [], [], COLORS["ink"], width=1)
         self._rmsd_pts = points(p_rmsd, [], [], color=COLORS["data"], size=8)
-        self._best = points(p_rmsd, [], [], color="#C0392B", size=16, fill_alpha=0, line_width=2)
+        self._best = points(p_rmsd, [], [], color=COLORS["highlight"], size=16, fill_alpha=0,
+                            line_width=2)
 
         p_wave = plot(TIME_LABEL, "Form factor", height=300)
         zero_line(p_wave)
@@ -53,7 +54,7 @@ class GaussiansTab(Tab):
         zero_line(p_res)
         self._res = line(p_res, spec.t, spec.stable_waveform - spec.stable_fit, COLORS["muted"])
 
-        main = [grid(card("Stable distribution with seeds (red) and model", p_dist),
+        main = [grid(card("Stable distribution with seeds (black dots) and model", p_dist),
                      card("Fit RMSD by model (dashed: Tikhonov; circled: lowest BIC)", p_rmsd),
                      card("Waveform fits", p_wave),
                      card("Residual", p_res))]

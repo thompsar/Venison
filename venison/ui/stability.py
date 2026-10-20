@@ -6,7 +6,7 @@ import threading
 from functools import partial
 
 import panel as pn
-from bokeh.models import BoxAnnotation, ColumnDataSource
+from bokeh.models import BoxAnnotation, ColumnDataSource, Label
 
 from venison.core import analysis as A
 from venison.ui.common import (COLORS, DISTANCE_LABEL, TIME_LABEL, Tab, button, card, grid, hint,
@@ -36,10 +36,26 @@ class StabilityTab(Tab):
         p_sol.varea("x", "y1", "y2", source=ColumnDataSource(
             {"x": spec.r, "y1": env_lo, "y2": env_hi}),
             fill_color=COLORS["sky"], fill_alpha=0.3, level="underlay")
-        for left, right, color in ((None, width_cut, "#3D8B5A"), (width_cut, dist_cut, "#E6B400"),
-                                   (dist_cut, None, "#C0392B")):
-            p_sol.add_layout(BoxAnnotation(left=left, right=right, fill_color=color,
-                                           fill_alpha=0.08, level="underlay"))
+        # Zones are labeled in text; tints only reinforce the warning (faint
+        # tints can't be told apart reliably with color blindness on their own).
+        r0, r1 = float(spec.r[0]), float(spec.r[-1])
+        for left, right, label, color, alpha in (
+                (r0, width_cut, "shape reliable", None, 0),
+                (width_cut, dist_cut, "mean only", "#F0E442", 0.25),
+                (dist_cut, r1, "unreliable", "#D55E00", 0.18)):
+            left, right = max(left, r0), min(right, r1)
+            if right <= left:
+                continue
+            if color:
+                p_sol.add_layout(BoxAnnotation(left=left, right=right, fill_color=color,
+                                               fill_alpha=alpha, level="underlay"))
+            p_sol.add_layout(Label(x=(left + right) / 2, y=ymax * 0.98, text=label,
+                                   text_align="center", text_baseline="top",
+                                   text_font_size="10.5px", text_color=COLORS["ink"],
+                                   text_alpha=0.75))
+        for boundary in (width_cut, dist_cut):
+            if r0 < boundary < r1:
+                vline(p_sol, boundary, color=COLORS["muted"], dash="dotted", width=1)
         line(p_sol, spec.r, spec.solution, COLORS["data"], width=2)
         self._cut = vline(p_sol, spec.r[idx])
 
@@ -55,7 +71,7 @@ class StabilityTab(Tab):
         self._swave = line(p_wave, spec.t, spec.stable_waveform, COLORS["muted"])
         self._sfit = line(p_wave, spec.t, spec.stable_fit, COLORS["fit"], width=2)
 
-        main = [grid(card("Reliability: shape (green), mean only (yellow), none (red)", p_sol),
+        main = [grid(card("Distance reliability for this trace length", p_sol),
                      card("Before and after removing the tail", p_filt)),
                 card("Stable waveform and fit", p_wave)]
 

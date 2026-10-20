@@ -33,7 +33,7 @@ class TikhonovTab(Tab):
                    x_axis_type="log", y_axis_type="log")
         points(p_l, lc.residual_norm, lc.solution_norm, color=COLORS["data"], size=5, alpha=0.7)
         points(p_l, lc.residual_norm[lc.loocv_index], lc.solution_norm[lc.loocv_index],
-               color="#C0392B", size=10, marker="circle", fill_alpha=0, line_width=2,
+               color=COLORS["highlight"], size=10, marker="circle", fill_alpha=0, line_width=2,
                legend_label="LOOCV")
         self._sel = points(p_l, lc.residual_norm[idx], lc.solution_norm[idx],
                            color=COLORS["ink"], size=8, legend_label="Selected")
@@ -50,7 +50,7 @@ class TikhonovTab(Tab):
         self._fit = line(p_fit, spec.t, spec.tikhonovfits[idx], COLORS["fit"], width=2)
 
         p_dist = plot(DISTANCE_LABEL, "P(r)", height=300)
-        line(p_dist, spec.r, spec.solutions[lc.loocv_index], "#C0392B", width=1,
+        line(p_dist, spec.r, spec.solutions[lc.loocv_index], COLORS["highlight"], width=1,
              line_dash="dashed", legend_label="LOOCV")
         self._dist = line(p_dist, spec.r, spec.solutions[idx], COLORS["data"], width=2,
                           legend_label="Selected")
@@ -68,7 +68,7 @@ class TikhonovTab(Tab):
         loocv = button("Reset to LOOCV")
         loocv.on_click(lambda e: self._set_alpha(lc.loocv_index))
         side = [section("Regularization"), self._alpha, self._alpha_text, loocv,
-                hint("The red circle is the leave-one-out cross-validation choice."),
+                hint("The open circle is the leave-one-out cross-validation choice."),
                 section("L-curve"), run]
         return main, side
 

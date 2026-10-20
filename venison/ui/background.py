@@ -44,7 +44,7 @@ class BackgroundTab(Tab):
         self._zero_fit = line(p_zero, spec.raw_time[1:w],
                               A.gaussian(spec.raw_time[1:w], *spec.zero_fit), COLORS["fit"], width=2)
         self._zero_line = vline(p_zero, spec.zeropoint, color=COLORS["alt"])
-        self._zero_pt = points(p_zero, spec.zeropoint, spec.zeroamp, color="#C0392B", size=8)
+        self._zero_pt = points(p_zero, spec.zeropoint, spec.zeroamp, color=COLORS["ink"], size=8)
 
         p_bg = plot(TIME_LABEL, height=280)
         line(p_bg, spec.raw_time, spec.real)
@@ -52,7 +52,7 @@ class BackgroundTab(Tab):
         self._bg3d_src = line(p_bg, spec.raw_time, spec.raw_time * np.nan, COLORS["muted"],
                               width=1.5, line_dash="dashed")
         self._bg_src = line(p_bg, spec.raw_time, spec.background, COLORS["fit"], width=2)
-        vline(p_bg, spec.cutoff, color="#C0392B", dash="solid")
+        vline(p_bg, spec.cutoff, color=COLORS["ink"], dash="solid")
         self._bg_line = vline(p_bg, spec.background_start, color=COLORS["data"])
 
         p_wave = plot(TIME_LABEL, "Form factor", height=300)
@@ -60,8 +60,8 @@ class BackgroundTab(Tab):
         self._wave_src = line(p_wave, spec.t, spec.waveform)
 
         main = [grid(card("Zero time (Gaussian fit to the echo maximum)", p_zero),
-                     card("Background fit (start in blue, cutoff in red; dashed: 3D fit "
-                          "for comparison)", p_bg)),
+                     card("Background fit (start: blue dashed, cutoff: black; gray dashed: 3D "
+                          "fit for comparison)", p_bg)),
                 card("Background-corrected waveform", p_wave)]
 
         self._window = sidebar_widget(pn.widgets.IntSlider(

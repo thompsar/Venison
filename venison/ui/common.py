@@ -23,8 +23,10 @@ COLORS = {
     "sky": "#56B4E9",
     "muted": "#9A928C",
     "ink": "#26211E",
+    "highlight": "#D55E00",   # the algorithm's pick (LOOCV, RMSD minimum, best BIC)
 }
-CONFIDENCE_COLORS = {0.95: "#56B4E9", 0.75: "#E69F00", 0.6: "#D55E00"}
+# Tight to loose reads dark to faded; distinct under common color blindness.
+CONFIDENCE_COLORS = {0.6: "#0072B2", 0.75: "#D55E00", 0.95: "#C9C3BD"}
 
 TIME_LABEL = "Evolution time (µs)"
 DISTANCE_LABEL = "Distance (nm)"

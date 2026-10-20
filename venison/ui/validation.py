@@ -123,7 +123,7 @@ class ValidationTab(Tab):
         p_rmsd.line("x", "y", source=self._well, line_color=COLORS["alt"], line_width=4,
                     line_alpha=0.8)
         m = A.validation_range_min(v, lo, hi + 1)
-        self._min = points(p_rmsd, x[m], v.rmsd[m], color="#C0392B", size=12,
+        self._min = points(p_rmsd, x[m], v.rmsd[m], color=COLORS["highlight"], size=12,
                            fill_alpha=0, line_width=2)
         self._sel = points(p_rmsd, x[sel], v.rmsd[sel], color=COLORS["ink"], size=7)
         if hasattr(spec, "bg_tab_start"):
@@ -149,7 +149,7 @@ class ValidationTab(Tab):
                      fill_alpha=0.35, level="underlay")
         self._dist = line(p_dist, spec.r, spec.validation_solutions[sel], COLORS["data"], width=2)
 
-        return [grid(card("RMSD by background start (green: range, red: its minimum, "
+        return [grid(card("RMSD by background start (green: range, open circle: its minimum, "
                           "dashed: Background tab)", p_rmsd),
                      card("Backgrounds", p_bg),
                      card("Selected waveform and fit", p_wave),

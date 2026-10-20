@@ -32,7 +32,7 @@ class RawSignalTab(Tab):
         p_phase = plot(TIME_LABEL, "Normalized echo", height=320)
         self._phase_src = [line(p_phase, spec.raw_time, real),
                            line(p_phase, spec.raw_time, imag, COLORS["imag"])]
-        self._cutoff_line = vline(p_phase, spec.cutoff, color="#C0392B", dash="solid")
+        self._cutoff_line = vline(p_phase, spec.cutoff, color=COLORS["ink"], dash="solid")
 
         self._slice_card = card(self._slice_title(kept[-1]), p_slice)
         main = [
