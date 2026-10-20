@@ -5,7 +5,13 @@ scratch.ipynb
 data/raw/2018-04-18-Cdk2_2dDEER.DTA
 data/raw/2017-12-31-pCdk2_2dDEER.DTA
 data/raw/2018-04-18-Cdk2_2dDEER.DSC
-.ipynb_checkpoints/scratch-checkpoint.ipynb
 *.pyc
-.ipynb_checkpoints/Venison-checkpoint.ipynb
-.ipynb_checkpoints/Venison-checkpoint.ipynb
+*.npz
+# Raw data stays local; only the bundled example is tracked.
+data/raw/*
+!data/raw/example_2dDEER*
+.ipynb_checkpoints
+.vscode/settings.json
+*/.ipynb_checkpoints/*
+ **/*.ipynb_checkpoints/
+ 

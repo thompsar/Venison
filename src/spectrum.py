@@ -1,3 +1,4 @@
+import os
 import numpy as np
 from numpy.random import default_rng
 import multiprocessing as mp
@@ -31,10 +32,19 @@ class spectrum():
         """
         
         self.path = path
-        self.metadata = {}
-        self.parse_metadata()
-        self.load_data()
-        self.set_defaults()
+        
+        if os.path.basename(self.path).split('.')[-1] == 'npz':
+            # NOTE: https://stackoverflow.com/questions/55890813/how-to-fix-object-arrays-cannot-be-loaded-when-allow-pickle-false-for-imdb-loa
+            parser = np.load(self.path, allow_pickle=True)
+            # NOTE: https://stackoverflow.com/questions/2466191/set-attributes-from-dictionary-in-python
+            for key in parser:
+                setattr(self, key, parser[key])
+
+        else:    
+            self.metadata = {}
+            self.parse_metadata()
+            self.load_data()
+            self.set_defaults()
         
     def parse_metadata(self):
         
@@ -119,6 +129,14 @@ class spectrum():
             self.Lmatrix[i, 1 + (i - 1)] = 1.
             self.Lmatrix[i, 1 + (i - 0)] = -2.
             self.Lmatrix[i, 1 + (i + 1)] = 1.
+        # above can be redone as follows, faster generation, square matrix 
+        # has no effect on fit results
+        # from scipy.linalg import toeplitz
+        # first_column = np.zeros(512)
+        # first_column[0] = 1
+        # first_row = np.zeros(512)
+        # first_row[:3] = [1,-2,1]
+        # toeplitz(first_column,first_row)
     
         
         

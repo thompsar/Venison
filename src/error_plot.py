@@ -21,13 +21,13 @@ def error_plot(landscape,statistics,cutoffs = [0.95,0.75,0.6], refresh = False, 
                                )
 
     error_surface_plot.xaxis.axis_label="Gaussian Center (nm)"
-    error_surface_plot.xaxis.axis_label_text_font_size='14pt'
+    error_surface_plot.xaxis.axis_label_text_font_size='16pt'
     error_surface_plot.yaxis.axis_label="Gaussian Width (nm)"
     error_surface_plot.yaxis.axis_label_text_font='helvetica'
     error_surface_plot.yaxis.axis_label_text_font_style='normal'
-    error_surface_plot.yaxis.axis_label_text_font_size='14pt'
-    error_surface_plot.yaxis.major_label_text_font_size='14pt'
-    error_surface_plot.xaxis.major_label_text_font_size='14pt'
+    error_surface_plot.yaxis.axis_label_text_font_size='16pt'
+    error_surface_plot.yaxis.major_label_text_font_size='16pt'
+    error_surface_plot.xaxis.major_label_text_font_size='16pt'
     
     error_surface_plot.ygrid.grid_line_alpha = 0.5
     error_surface_plot.xgrid.grid_line_alpha = 0.5
