@@ -25,7 +25,9 @@ class ResultsTab(Tab):
 
     def build(self):
         spec = self.spec
-        env_lo, env_hi = A.best_monte_carlo_model(spec)
+        # Computed with the Monte Carlo run; older analyses compute it here.
+        band = getattr(spec, "mc_band", None)
+        env_lo, env_hi = band if band is not None else A.best_monte_carlo_model(spec)
 
         p_fit = plot(TIME_LABEL, "Form factor", height=320)
         zero_line(p_fit)

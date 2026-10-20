@@ -6,9 +6,9 @@ import numpy as np
 import panel as pn
 
 from venison.core import analysis as A
-from venison.ui.common import (CONFIDENCE_COLORS, COLORS, Tab, button, card, hint, plot, points,
-                               section, sidebar_widget)
-from bokeh.models import Span
+from venison.ui.common import (CONFIDENCE_COLORS, COLORS, Tab, button, card, hint, plot, section,
+                               sidebar_widget)
+from bokeh.models import ColumnDataSource, Span
 
 _PARAMS = ("r (nm)", "σ (nm)", "Mole fraction")
 
@@ -67,15 +67,28 @@ class MonteCarloTab(Tab):
         scaled = A.mole_fraction_landscape(spec)
         stats = spec.landscape_statistics
         npop = scaled.shape[1]
-        levels = sorted(CONFIDENCE_COLORS, reverse=True)  # widest first, so tighter sets draw on top
 
-        p_surface = plot("Gaussian center (nm)", "Gaussian width (nm)", height=460)
-        for level in levels:
-            keep = stats <= level
-            for pop in range(npop):
-                points(p_surface, scaled[keep, pop, 0], scaled[keep, pop, 1],
-                       color=CONFIDENCE_COLORS[level], size=2,
-                       **({"legend_label": f"F statistic ≤ {level}"} if pop == 0 else {}))
+        # Each sample is drawn once, colored by the tightest F-statistic level
+        # it meets (the notebook overplotted every level, so samples were
+        # drawn up to three times), sorted so tighter samples land on top,
+        # and rendered with WebGL: tens of thousands of points per plot
+        # otherwise stall the browser for seconds.
+        levels = sorted(CONFIDENCE_COLORS)                    # 0.6, 0.75, 0.95
+        shown = np.where(stats <= levels[-1])[0]
+        shown = shown[np.argsort(-stats[shown])]
+        tightest = np.asarray(levels)[np.searchsorted(levels, stats[shown])]
+        colors = [CONFIDENCE_COLORS[l] for l in tightest]
+        labels = [f"F statistic ≤ {l}" for l in tightest]
+
+        def scatter(p, x, y, legend=False):
+            src = ColumnDataSource({"x": x, "y": y, "color": colors, "label": labels})
+            p.scatter("x", "y", source=src, color="color", size=2,
+                      **({"legend_group": "label"} if legend else {}))
+
+        p_surface = plot("Gaussian center (nm)", "Gaussian width (nm)", height=460,
+                         output_backend="webgl")
+        for pop in range(npop):
+            scatter(p_surface, scaled[shown, pop, 0], scaled[shown, pop, 1], legend=pop == 0)
         p_surface.legend.label_text_font_size = "11px"
 
         nparams = 3 if npop > 1 else 2  # a single population's mole fraction is always 1
@@ -84,19 +97,16 @@ class MonteCarloTab(Tab):
             cells = []
             for j in range(nparams):
                 p = plot(_PARAMS[j], "F statistic" if j == 0 else "", height=200,
-                         y_range=(0, 1), title=f"Population {pop + 1}")
+                         y_range=(0, 1), title=f"Population {pop + 1}", output_backend="webgl")
                 p.title.text_font_size = "11px"
-                for level in levels:
-                    keep = stats <= level
-                    points(p, scaled[keep, pop, j], stats[keep], color=CONFIDENCE_COLORS[level],
-                           size=2)
+                scatter(p, scaled[shown, pop, j], stats[shown])
                 p.add_layout(Span(location=0.5, dimension="width", line_dash="dashed",
                                   line_color=COLORS["ink"], line_width=1))
                 cells.append(pn.pane.Bokeh(p, sizing_mode="stretch_width"))
             rows.append(pn.Row(*cells, sizing_mode="stretch_width"))
         n = len(stats)
-        return [card(f"Error surface: {npop} Gaussian{'s' if npop > 1 else ''}, {n:,} samples",
-                     p_surface),
+        return [card(f"Error surface: {npop} Gaussian{'s' if npop > 1 else ''}, {n:,} samples "
+                     f"({len(shown):,} with F statistic ≤ {levels[-1]} shown)", p_surface),
                 card("Parameter projections", *rows)]
 
     async def _on_run(self, _event):

@@ -552,6 +552,9 @@ def run_monte_carlo(spec, m: int, rs_weights, iterations: int = 5000) -> None:
                            weights=step_weights(spec, rs_weights), iterations=iterations)
     spec.norm_constants = np.array(
         [np.trapezoid(gaussians(spec.r, c), spec.r) for c in spec.model_landscape])
+    # The Results tab's best fit and 95% band take ~0.5 s at 40k samples; do
+    # it here, in the background run, rather than when the tab opens.
+    spec.mc_band = np.array(best_monte_carlo_model(spec))
 
 
 def mole_fraction_landscape(spec) -> np.ndarray:
