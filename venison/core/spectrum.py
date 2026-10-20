@@ -164,13 +164,24 @@ class spectrum():
     def fit_background(self,model,background_range):
         ###CLEAN ME UP!!
         #Dont need to pass model if it's stored in self, which it currently is. Fix!!
-        if self.bgmodel == bgFractal:
+        self.bg_fell_back = False
+        fixed_d = getattr(self, "fractal_fixed_d", None)
+        if self.bgmodel == bgFractal and fixed_d is not None:
+            # Dimensionality held fixed (background validation option): only
+            # amplitude and decay are fit, so every trial uses the same shape.
+            bgfit=optimize.curve_fit(lambda x, b, c: bgFractal(x, b, c, fixed_d),
+                                     self.raw_time[background_range],
+                                     self.real[background_range], bounds=[[0,0],[np.inf,np.inf]])[0]
+            self.background = bgFractal(self.raw_time, *bgfit, fixed_d)
+        elif self.bgmodel == bgFractal:
             try:
                 bgfit=optimize.curve_fit(model,self.raw_time[background_range],
                              self.real[background_range], bounds=[[0,0,1],[np.inf,np.inf,5]])[0]
                 self.background = model(self.raw_time,*bgfit)
+                self.fractal_d = float(bgfit[2])
             except RuntimeError:
                 print("Had to use 3D for this set of conditions")
+                self.bg_fell_back = True
                 bgfit=optimize.curve_fit(bg3D,self.raw_time[background_range],
                                      self.real[background_range])[0]
                 self.background = bg3D(self.raw_time,*bgfit)
@@ -259,7 +270,12 @@ class spectrum():
         self.background_fit_points = self.raw_time[bgpositions]
         
 #         self.backgrounds = np.array([self.fit_background(bg3D,range(i,self.background_range[-1]+1)) for i in bgpositions])
-        self.backgrounds = np.array([self.fit_background(self.bgmodel,range(i,self.background_range[-1]+1)) for i in bgpositions])
+        backgrounds, self.validation_fell_back = [], []
+        for i in bgpositions:
+            backgrounds.append(self.fit_background(self.bgmodel,range(i,self.background_range[-1]+1)))
+            self.validation_fell_back.append(self.bg_fell_back)
+        self.backgrounds = np.array(backgrounds)
+        self.validation_fell_back = np.array(self.validation_fell_back)
         self.waveforms = np.array([self.background_correct(background) for background in self.backgrounds])
 
         pool = mp.Pool()

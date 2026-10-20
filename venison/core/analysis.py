@@ -129,7 +129,11 @@ def fit_background(spec, background_start, model_name: str = "3D") -> np.ndarray
     spec.bgmodel_name = model_name
     spec.background_start = background_start
     spec.update_ranges()
+    spec.fractal_fixed_d = None
     spec.fit_background(spec.bgmodel, spec.background_range)
+    # The dimensionality validation can hold fixed (None unless Fractal fit).
+    spec.bg_tab_fractal_d = (getattr(spec, "fractal_d", None)
+                             if model_name == "Fractal" and not spec.bg_fell_back else None)
     return spec.background_correct()
 
 
@@ -184,8 +188,52 @@ def _min_in_range(rmsd, lo: int, hi: int) -> int:
     return lo + int(rmsd[lo:hi].argmin())
 
 
-def validate_background(spec, end_offset: int = 100) -> Validation:
-    spec.validate_background(end_offset=end_offset)
+def background_tab_fractal_d(spec) -> float | None:
+    """Fractal dimension of the Background tab's fit, or None if that fit fell
+    back to 3D. Analyses saved before it was recorded get it refit, without
+    touching the spectrum's current background."""
+    if not hasattr(spec, "bg_tab_fractal_d"):
+        start = getattr(spec, "bg_tab_start", spec.background_start)
+        fit_range = range(nearest_index(spec.raw_time, start),
+                          nearest_index(spec.raw_time, spec.cutoff) + 1)
+        try:
+            spec.bg_tab_fractal_d = float(optimize.curve_fit(
+                bgFractal, spec.raw_time[fit_range], spec.real[fit_range],
+                bounds=[[0, 0, 1], [np.inf, np.inf, 5]])[0][2])
+        except RuntimeError:
+            spec.bg_tab_fractal_d = None
+    return spec.bg_tab_fractal_d
+
+
+VALIDATION_DEFAULTS = {"earliest_start": 0.2, "shortest_fit": 0.8, "n_trials": 100,
+                       "hold_fractal_d": True}
+
+
+def validate_background(spec, earliest_start: float = 0.2, shortest_fit: float = 0.8,
+                        n_trials: int = 100, hold_fractal_d: bool = True) -> Validation:
+    """Sweep the background start and score each trial by how well it rebuilds
+    the raw echo.
+
+    Trial starts run from `earliest_start` (µs) to the point that still
+    leaves `shortest_fit` µs of trace for the background fit. With a Fractal
+    background and `hold_fractal_d`, every trial keeps the dimensionality
+    fitted on the Background tab; left free, it swings from trial to trial
+    and makes the RMSD curve jump.
+    """
+    dt = float(spec.raw_time[1] - spec.raw_time[0])
+    end_offset = max(1, int(round(shortest_fit / dt)))
+    held_d = (background_tab_fractal_d(spec)
+              if hold_fractal_d and spec.bgmodel_name == "Fractal" else None)
+    spec.fractal_fixed_d = held_d
+    try:
+        spec.validate_background(background_start=earliest_start, n_backgrounds=n_trials,
+                                 end_offset=end_offset)
+    finally:
+        spec.fractal_fixed_d = None
+    spec.validation_settings = {"earliest_start": earliest_start, "shortest_fit": shortest_fit,
+                                "n_trials": n_trials, "hold_fractal_d": hold_fractal_d,
+                                "held_d": held_d,
+                                "fallbacks": int(np.sum(spec.validation_fell_back))}
     wr = spec.waveform_range
 
     amplitudes = [(1.0 - b[wr][0]) / b[wr][0] for b in spec.backgrounds]
@@ -194,29 +242,44 @@ def validate_background(spec, end_offset: int = 100) -> Validation:
         fit = np.dot(spec.kernel, spec.validation_solutions[i])
         reconstructed.append(fit / fit.max() * amplitudes[i] * b[wr] + b[wr])
     rmsd = np.sqrt(np.mean((spec.real[wr] - np.array(reconstructed)) ** 2, axis=1))
-
-    try:
-        maxima = int(argrelextrema(rmsd, np.greater)[0][0])
-    except IndexError:
-        maxima = len(rmsd) - 1
-    try:
-        well_l = int(np.where(rmsd[:maxima] >= rmsd[maxima])[0][-1])
-    except IndexError:
-        well_l = 0
-    min_index = _min_in_range(rmsd, well_l, maxima)
-
     # DOF is approximate; it only needs to find the edges of the well.
-    dof = len(spec.waveform) - 3
-    stat = np.round(ftest.cdf(rmsd / rmsd[min_index], dof, dof), decimals=2)
-    inside = np.where(stat <= 0.6)[0]
-    gaps = np.where(np.diff(inside) > 1)[0]
-    if gaps.size:
-        inside = inside[:gaps[0] + 1]
+    min_index, (lo, hi) = suggest_range(rmsd, dof=len(spec.waveform) - 3)
 
     spec.validation_rmsd = rmsd
     spec.validation_min_index = min_index
-    spec.validation_well = np.array([inside[0], inside[-1]])
+    spec.validation_well = np.array([lo, hi])
     return validation_of(spec)
+
+
+def suggest_range(rmsd, dof: int, stat_cutoff: float = 0.6) -> tuple[int, tuple[int, int]]:
+    """Suggested background start (trial index) and range (inclusive indices)."""
+    # The suggested background is the bottom of the first RMSD well: earlier
+    # starts fold dipolar signal into the background, while very late starts
+    # score well only because Tikhonov soaks up the background error as
+    # long-distance P(r).
+    # NOTE(notebook): the notebook always used the first well. A minimum on the
+    # very first trial is the edge of the sweep, not a well (the curve rises
+    # from the start), so move on to the next well in that case.
+    peaks = [int(p) for p in argrelextrema(rmsd, np.greater)[0]] + [len(rmsd) - 1]
+    start = 0
+    for peak in peaks:
+        left = np.where(rmsd[start:peak] >= rmsd[peak])[0]
+        well_l = start + (int(left[-1]) if left.size else 0)
+        min_index = _min_in_range(rmsd, well_l, peak)
+        if min_index > 0:
+            break
+        start = peak
+
+    # The range: neighbours statistically indistinguishable from the minimum.
+    ok = np.round(ftest.cdf(rmsd / rmsd[min_index], dof, dof), decimals=2) <= stat_cutoff
+    # NOTE(notebook): the notebook took the first run of acceptable trials,
+    # which need not contain the minimum; grow outward from the minimum instead.
+    lo = hi = min_index
+    while lo > 0 and ok[lo - 1]:
+        lo -= 1
+    while hi < len(rmsd) - 1 and ok[hi + 1]:
+        hi += 1
+    return min_index, (lo, hi)
 
 
 def validation_of(spec) -> Validation:
