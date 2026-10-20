@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import numpy as np
 import panel as pn
 from bokeh.models import BoxAnnotation, ColumnDataSource
 
@@ -58,8 +59,9 @@ class StabilityTab(Tab):
         self._slider = sidebar_widget(pn.widgets.FloatSlider(
             name="Instability point (nm)", start=float(spec.r[0]), end=float(spec.r[-1]),
             step=dr, value=float(spec.r[idx]), format="0.00"))
-        self._slider.param.watch(lambda e: setattr(self._cut, "location", float(e.new)), "value")
-        self._slider.param.watch(self._on_commit, "value_throttled")
+        # Live while dragging (~0.1 s per re-regularization); saved on release.
+        self._slider.param.watch(lambda e: self._update(save=False), "value")
+        self._slider.param.watch(lambda e: self._update(save=True), "value_throttled")
         reset = button("Reset to default")
         reset.on_click(lambda e: self._set(default_idx))
         side = [section("Cutoff"), self._slider, reset,
@@ -69,26 +71,29 @@ class StabilityTab(Tab):
         return main, side
 
     def _renormalized(self, idx):
-        import numpy as np
         mask = np.zeros_like(self.spec.r)
         mask[idx:] = 1
         sol = self.spec.solution
         return sol / np.trapezoid(sol - sol * mask)
 
-    def _apply(self, idx):
+    def _apply(self, idx, save=True):
         A.apply_stability_cutoff(self.spec, idx)
         # Gaussian models were fit to the previous stable distribution.
         self.spec.gauss_fitted = None
-        self.complete(instability_point=float(self.spec.r[idx]))
+        if save:
+            self.complete(instability_point=float(self.spec.r[idx]))
+        else:
+            self.invalidate()
 
     def _set(self, idx):
         self._slider.value = float(self.spec.r[idx])
-        self._on_commit(None)
+        self._update(save=True)
 
-    def _on_commit(self, _event):
+    def _update(self, save):
         spec = self.spec
         idx = A.nearest_index(spec.r, self._slider.value)
-        self._apply(idx)
+        self._cut.location = float(spec.r[idx])
+        self._apply(idx, save=save)
         self._renorm.data = {"x": spec.r, "y": self._renormalized(idx)}
         self._stable.data = {"x": spec.r, "y": spec.stable_solution}
         self._swave.data = {"x": spec.t, "y": spec.stable_waveform}

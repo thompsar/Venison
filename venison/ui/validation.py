@@ -74,7 +74,8 @@ class ValidationTab(Tab):
         n = len(v.rmsd)
         self._range = sidebar_widget(pn.widgets.IntRangeSlider(
             name="Backgrounds in range", start=0, end=n - 1, value=(lo, hi)))
-        self._range.param.watch(self._on_range, "value_throttled")
+        self._range.param.watch(lambda e: self._on_range(e.new, save=False), "value")
+        self._range.param.watch(lambda e: self._on_range(e.new, save=True), "value_throttled")
         self._pick = sidebar_widget(pn.widgets.IntSlider(
             name="Selected background", start=lo, end=max(hi, lo + 1), value=sel))
         self._pick.param.watch(self._on_pick_drag, "value")
@@ -125,8 +126,8 @@ class ValidationTab(Tab):
     def _on_pick(self, event):
         self._select(event.new)
 
-    def _on_range(self, event):
-        lo, hi = event.new
+    def _on_range(self, value, save):
+        lo, hi = value
         spec = self.spec
         v = A.validation_of(spec)
         self._well.data = {"x": v.fit_points[lo:hi + 1], "y": v.rmsd[lo:hi + 1]}
@@ -136,7 +137,10 @@ class ValidationTab(Tab):
         self._env.data = {"x": spec.r, "y1": env_lo, "y2": env_hi}
         self._zoom(lo, hi)
         self._pick.start, self._pick.end = lo, max(hi, lo + 1)
-        self._select(m)
+        if save:
+            self._select(m)
+        else:
+            self._show(m)
 
     async def _on_run(self, _event):
         spec = self.spec

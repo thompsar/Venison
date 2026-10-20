@@ -63,10 +63,13 @@ class BackgroundTab(Tab):
             name="Background start (µs)", start=float(options[0]), end=float(options[-1]),
             step=dt, value=float(options[A.nearest_index(options, spec.background_start)]),
             format="0.000"))
+        # Sliders refit live while dragging, like the notebook; the result is
+        # saved (and later steps cleared) once, on release.
         for widget in (self._window, self._start):
-            widget.param.watch(self._on_change, "value_throttled")
+            widget.param.watch(lambda e: self._on_change(save=False), "value")
+            widget.param.watch(lambda e: self._on_change(save=True), "value_throttled")
         for widget in (self._norm, self._model):
-            widget.param.watch(self._on_change, "value")
+            widget.param.watch(lambda e: self._on_change(save=True), "value")
 
         side = [section("Zero time"), self._window, self._norm,
                 hint("The Gaussian fit window starts at the second point."),
@@ -77,25 +80,29 @@ class BackgroundTab(Tab):
                              "Validation tab. Changing anything here clears that choice."))
         return main, side
 
-    def _fit(self, start, model):
+    def _fit(self, start, model, save=True):
         spec = self.spec
         spec.zero_fit = A.fit_zero_point(spec, int(spec.zero_window), spec.normalizer)
         A.fit_background(spec, start, model)
         spec.bg_tab_start = float(start)
-        self.complete(zero_window=int(spec.zero_window), normalizer=spec.normalizer,
-                      background_model=model, background_start=float(start),
-                      zeropoint=float(spec.zeropoint))
+        if save:
+            self.complete(zero_window=int(spec.zero_window), normalizer=spec.normalizer,
+                          background_model=model, background_start=float(start),
+                          zeropoint=float(spec.zeropoint))
+        else:
+            self.invalidate()  # clears later steps' dots now; only writes when they change
 
-    def _on_change(self, _event):
+    def _on_change(self, save):
         spec = self.spec
         spec.zero_window = int(self._window.value)
         spec.normalizer = self._norm.value
         options = A.background_start_options(spec)
         start = options[A.nearest_index(options, self._start.value)]
         try:
-            self._fit(start, self._model.value)
+            self._fit(start, self._model.value, save=save)
         except Exception as exc:  # e.g. curve_fit not converging for a tiny window
-            self.app.notify(f"Fit failed: {exc}", "error")
+            if save:  # mid-drag failures just skip a frame
+                self.app.notify(f"Fit failed: {exc}", "error")
             return
         w = int(spec.zero_window)
         x = spec.raw_time[1:w]

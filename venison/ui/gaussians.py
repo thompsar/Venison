@@ -88,7 +88,7 @@ class GaussiansTab(Tab):
             s = sidebar_widget(pn.widgets.FloatSlider(
                 name=f"Gaussian {i + 1} (nm)", start=float(spec.r[0]), end=float(spec.r[-1]),
                 step=dr, value=float(np.clip(r, spec.r[0], spec.r[-1])), format="0.00"))
-            s.param.watch(lambda e, i=i: self._on_center(i, e.new), "value_throttled")
+            s.param.watch(lambda e, i=i: self._on_center(i, e.new), "value")
             sliders.append(s)
         self._centers[:] = sliders
 
@@ -146,8 +146,12 @@ class GaussiansTab(Tab):
         self._show_model()
 
     def _on_center(self, i, value):
-        self.gm.set_center(self.model, i, value)
-        self._show_model()
+        # Move just the seed point: rebuilding the sliders would end the drag.
+        spec, gm = self.spec, self.gm
+        gm.set_center(self.model, i, value)
+        centers = gm.model(self.model)[:, 0]
+        nearest = [A.nearest_index(spec.r, c) for c in centers]
+        self._seeds.data = {"x": centers, "y": spec.stable_solution[nearest]}
 
     def _on_init(self, _event):
         try:
