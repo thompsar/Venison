@@ -137,6 +137,43 @@ def fit_background(spec, background_start, model_name: str = "3D") -> np.ndarray
     return spec.background_correct()
 
 
+@dataclass
+class BackgroundSummary:
+    model: str                  # model actually used ("3D" if a Fractal fit fell back)
+    b: float
+    c: float
+    d: float                    # 3 for the 3D model
+    rmsd: float                 # fit residual over the background range
+    alt: "BackgroundSummary | None" = None   # 3D fit on the same range, for a Fractal fit
+    alt_curve: np.ndarray | None = None
+
+
+def summarize_background(spec, start, model_name) -> BackgroundSummary:
+    """Parameters and fit quality of the background fit from `start` to the
+    cutoff, plus (for Fractal) a 3D fit over the same range for comparison.
+
+    Refits from scratch (milliseconds) rather than reading the spectrum, whose
+    background may since have been replaced by a validation choice."""
+    rng = slice(nearest_index(spec.raw_time, start), nearest_index(spec.raw_time, spec.cutoff) + 1)
+    x, y = spec.raw_time[rng], spec.real[rng]
+
+    def rmsd_of(curve):
+        return float(np.sqrt(np.mean((y - curve[rng]) ** 2)))
+
+    b3, c3 = optimize.curve_fit(bg3D, x, y)[0]
+    curve3 = bg3D(spec.raw_time, b3, c3)
+    three_d = BackgroundSummary("3D", b3, c3, 3.0, rmsd_of(curve3))
+    if model_name != "Fractal":
+        return three_d
+    try:
+        b, c, d = optimize.curve_fit(bgFractal, x, y, bounds=[[0, 0, 1], [np.inf, np.inf, 5]])[0]
+    except RuntimeError:
+        return three_d  # same fallback the analysis uses
+    fractal = BackgroundSummary("Fractal", b, c, d, rmsd_of(bgFractal(spec.raw_time, b, c, d)))
+    fractal.alt, fractal.alt_curve = three_d, curve3
+    return fractal
+
+
 # ── Tikhonov / L-curve ───────────────────────────────────────────────────────
 
 @dataclass
@@ -330,23 +367,77 @@ def stability_limits(spec) -> tuple[float, float, int]:
     return width_cutoff, distance_cutoff, idx
 
 
+def prepare_regularizer(spec):
+    """QR factors of [K; αL] for the spectrum's current kernel and alpha,
+    computed once (~0.3 s) and cached on the spectrum."""
+    key = (float(spec.alpha), spec.kernel.shape)
+    cache = getattr(spec, "_regularize_qr", None)
+    if cache is None or cache[0] != key:
+        from scipy.linalg import qr
+        q, r = qr(np.concatenate([spec.kernel, spec.alpha * spec.Lmatrix]), mode="economic")
+        cache = spec._regularize_qr = (key, q, r)
+    return cache[1], cache[2]
+
+
+def regularize_fast(spec, waveform, warm=None) -> np.ndarray:
+    """Same result as `spec.waveform_regularize`, about 3× faster when called
+    repeatedly at one alpha.
+
+    The system [K; αL] is fixed for a given kernel and alpha, so it is QR
+    factored once: ‖Ax − b‖² = ‖Rx − Qᵀb‖² + const, and the NNLS runs on the
+    square R instead of the tall A. The factorization is cached on the
+    spectrum (underscore attributes aren't saved). `warm`, a solution to a
+    nearby problem, often lets it skip the NNLS iterations entirely.
+    """
+    q, r = prepare_regularizer(spec)
+    rhs = q.T @ np.concatenate([waveform, np.zeros(spec.Lmatrix.shape[0])])
+    if warm is not None and warm.shape == (r.shape[1],) and np.any(warm > 0):
+        # Warm start: guess the support from a nearby solution, solve plain
+        # least squares on it, and accept only if it satisfies the NNLS
+        # optimality (KKT) conditions, in which case it IS the NNLS solution.
+        support = warm > 0
+        xs = np.linalg.lstsq(r[:, support], rhs, rcond=None)[0]
+        if np.all(xs > 0):
+            x = np.zeros(r.shape[1])
+            x[support] = xs
+            gradient = r.T @ (rhs - r @ x)
+            if gradient[~support].max(initial=0.0) <= 1e-10 * np.abs(r.T @ rhs).max():
+                return x
+    return optimize.nnls(r, rhs)[0]
+
+
+def stability_cutoff(spec, index: int) -> dict:
+    """Remove the unreliable long-distance tail and re-regularize, without
+    changing the spectrum (safe to run on a worker thread). Returns the
+    attributes `apply_stability_cutoff` sets."""
+    mask = np.zeros_like(spec.r)
+    mask[index:] = 1
+    unstable = np.dot(spec.kernel, spec.solution * mask)
+    stable_waveform = (spec.waveform - unstable) / (1.0 - unstable.max())
+    # Neighbouring cutoffs have nearly the same solution: warm-start from it.
+    solution = regularize_fast(spec, stable_waveform, warm=getattr(spec, "stable_solution", None))
+    solution = solution / np.trapezoid(solution)
+    fit = np.dot(spec.kernel, solution)
+    return {"instability_index": int(index), "unstable_waveform": unstable,
+            "stable_waveform": stable_waveform, "stable_solution": solution,
+            "stable_fit": fit / fit[0]}
+
+
 def apply_stability_cutoff(spec, index: int) -> np.ndarray:
     """Remove the unreliable long-distance tail and re-regularize.
 
     Returns the unfiltered solution normalized over the stable region, for
     plotting against `spec.stable_solution`.
     """
-    spec.instability_index = int(index)
-    mask = np.zeros_like(spec.r)
-    mask[index:] = 1
-    spec.unstable_waveform = np.dot(spec.kernel, spec.solution * mask)
-    spec.stable_waveform = (spec.waveform - spec.unstable_waveform) / (
-        1.0 - spec.unstable_waveform.max())
-    spec.stable_solution = spec.waveform_regularize(spec.stable_waveform)
-    spec.stable_solution = spec.stable_solution / np.trapezoid(spec.stable_solution)
-    spec.stable_fit = np.dot(spec.kernel, spec.stable_solution)
-    spec.stable_fit = spec.stable_fit / spec.stable_fit[0]
-    return spec.solution / np.trapezoid(spec.solution - spec.solution * mask)
+    for key, value in stability_cutoff(spec, index).items():
+        setattr(spec, key, value)
+    return renormalized_solution(spec, index)
+
+
+def renormalized_solution(spec, index: int) -> np.ndarray:
+    """The unfiltered solution normalized over the stable region (r < r[index])."""
+    kept = np.where(np.arange(len(spec.r)) < index, spec.solution, 0.0)
+    return spec.solution / np.trapezoid(kept)
 
 
 # ── Gaussian modeling ────────────────────────────────────────────────────────

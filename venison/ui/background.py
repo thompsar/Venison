@@ -10,6 +10,15 @@ from venison.ui.common import (COLORS, TIME_LABEL, Tab, card, grid, hint, line, 
                                section, sidebar_widget, vline, zero_line)
 
 
+_EQUATIONS = (
+    "<b>3D:</b> B(t) = b·exp(−t / c)<br>"
+    "<b>Fractal:</b> B(t) = b·exp(−t<sup>d/3</sup> / c)<br>"
+    "d is the dimensionality of the spin distribution: 3 for spins spread evenly "
+    "through solution (identical to the 3D model), lower for e.g. membranes. "
+    "c is the decay constant (µs for 3D)."
+)
+
+
 class BackgroundTab(Tab):
     title = "Background"
     icon = "background"
@@ -39,6 +48,9 @@ class BackgroundTab(Tab):
 
         p_bg = plot(TIME_LABEL, height=280)
         line(p_bg, spec.raw_time, spec.real)
+        # 3D fit over the same range, shown for comparison when Fractal is selected.
+        self._bg3d_src = line(p_bg, spec.raw_time, spec.raw_time * np.nan, COLORS["muted"],
+                              width=1.5, line_dash="dashed")
         self._bg_src = line(p_bg, spec.raw_time, spec.background, COLORS["fit"], width=2)
         vline(p_bg, spec.cutoff, color="#C0392B", dash="solid")
         self._bg_line = vline(p_bg, spec.background_start, color=COLORS["data"])
@@ -48,7 +60,8 @@ class BackgroundTab(Tab):
         self._wave_src = line(p_wave, spec.t, spec.waveform)
 
         main = [grid(card("Zero time (Gaussian fit to the echo maximum)", p_zero),
-                     card("Background fit (start in blue, cutoff in red)", p_bg)),
+                     card("Background fit (start in blue, cutoff in red; dashed: 3D fit "
+                          "for comparison)", p_bg)),
                 card("Background-corrected waveform", p_wave)]
 
         self._window = sidebar_widget(pn.widgets.IntSlider(
@@ -71,14 +84,53 @@ class BackgroundTab(Tab):
         for widget in (self._norm, self._model):
             widget.param.watch(lambda e: self._on_change(save=True), "value")
 
+        self._fit_info = pn.pane.HTML("", margin=(2, 8), sizing_mode="stretch_width")
         side = [section("Zero time"), self._window, self._norm,
                 hint("The Gaussian fit window starts at the second point."),
                 section("Background"), self._model, self._start,
-                hint("Fit from the start to the cutoff. Refine it on the Validation tab.")]
+                hint("Fit from the start to the cutoff. Refine it on the Validation tab."),
+                hint(_EQUATIONS), self._fit_info]
         if self.session.is_done("validation"):
-            side.append(hint("<b>Note:</b> the current background start was chosen on the "
-                             "Validation tab. Changing anything here clears that choice."))
+            side.append(hint("<b>Note:</b> the plots show the background chosen on the "
+                             "Validation tab; the parameters above are for the start set "
+                             "here. Changing anything here clears the validation choice."))
+        self._show_fit_info()
         return main, side
+
+    def _show_fit_info(self):
+        spec = self.spec
+        options = A.background_start_options(spec)
+        start = options[A.nearest_index(options, self._start.value)]
+        try:
+            s = A.summarize_background(spec, start, self._model.value)
+        except Exception:  # fit failure mid-drag: keep the last numbers
+            return
+        cols = [s] + ([s.alt] if s.alt else [])
+        head = "".join(f"<th style='text-align:right;padding:0 0 0 10px'>{c.model}</th>"
+                       for c in cols)
+
+        def row(label, values):
+            cells = "".join(f"<td style='text-align:right;padding:0 0 0 10px;"
+                            f"font-variant-numeric:tabular-nums'>{v}</td>" for v in values)
+            return f"<tr><td style='color:#7A706A'>{label}</td>{cells}</tr>"
+
+        rows = [row("b", [f"{c.b:.3f}" for c in cols]),
+                row("c", [f"{c.c:.3g}" for c in cols]),
+                row("d", [f"{c.d:.2f}" for c in cols]),
+                row("fit RMSD", [f"{c.rmsd:.2e}" for c in cols])]
+        warn = ""
+        if s.model == "Fractal" and min(abs(s.d - 1), abs(s.d - 5)) < 0.1:
+            warn = (f"<div class='vn-hint' style='padding:4px 0 0'><b>Warning:</b> d is at or near "
+                    f"its limit (1–5); the Fractal model may not suit this range.</div>")
+        elif self._model.value == "Fractal" and s.model == "3D":
+            warn = ("<div class='vn-hint' style='padding:4px 0 0'><b>Note:</b> the Fractal "
+                    "fit failed for this range, so 3D is used.</div>")
+        self._fit_info.object = (
+            "<table style='font-size:12.5px;border-collapse:collapse;width:100%'>"
+            f"<tr><th></th>{head}</tr>{''.join(rows)}</table>{warn}")
+        self._bg3d_src.data = {"x": spec.raw_time,
+                               "y": s.alt_curve if s.alt_curve is not None
+                               else spec.raw_time * np.nan}
 
     def _fit(self, start, model, save=True):
         spec = self.spec
@@ -113,3 +165,4 @@ class BackgroundTab(Tab):
         self._bg_src.data = {"x": spec.raw_time, "y": spec.background}
         self._bg_line.location = float(spec.background_start)
         self._wave_src.data = {"x": spec.t, "y": spec.waveform}
+        self._show_fit_info()

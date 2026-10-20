@@ -67,7 +67,8 @@ class SpectrumSession:
     def save(self) -> None:
         npz, _ = self.project.workspace_paths(self.name)
         npz.parent.mkdir(parents=True, exist_ok=True)
-        state = {k: v for k, v in vars(self.spec).items() if k not in _UNSAVED}
+        state = {k: v for k, v in vars(self.spec).items()
+                 if k not in _UNSAVED and not k.startswith("_")}  # "_": caches
         tmp = npz.with_suffix(".tmp.npz")
         np.savez(tmp, **state)
         tmp.replace(npz)

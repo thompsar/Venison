@@ -173,6 +173,7 @@ class spectrum():
                                      self.raw_time[background_range],
                                      self.real[background_range], bounds=[[0,0],[np.inf,np.inf]])[0]
             self.background = bgFractal(self.raw_time, *bgfit, fixed_d)
+            bgfit = np.append(bgfit, fixed_d)
         elif self.bgmodel == bgFractal:
             try:
                 bgfit=optimize.curve_fit(model,self.raw_time[background_range],
@@ -189,6 +190,7 @@ class spectrum():
             bgfit=optimize.curve_fit(model,self.raw_time[background_range],
                                      self.real[background_range])[0]
             self.background = model(self.raw_time,*bgfit)
+        self.bg_params = np.asarray(bgfit)  # b, c[, d] of the model actually used
         return self.background
         
     

@@ -56,6 +56,7 @@ def export_results(spec, results_dir: str, processed_dir: str, name: str | None 
     written.append(path)
     # Same layout the global-analysis notebook loads via `spectrum(<npz>)`.
     path = os.path.join(processed_dir, f"{name}.npz")
-    np.savez(path, **vars(spec))
+    # Underscore attributes are in-memory caches, not results.
+    np.savez(path, **{k: v for k, v in vars(spec).items() if not k.startswith("_")})
     written.append(path)
     return written

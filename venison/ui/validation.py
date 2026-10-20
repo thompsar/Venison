@@ -67,8 +67,8 @@ class ValidationTab(Tab):
                 out += [self._hold_d,
                         hint("Left free, d swings from trial to trial and makes the RMSD "
                              "curve jump between bands.")]
-                if min(abs(d - 1), abs(d - 5)) < 1e-3:
-                    out.append(hint(f"<b>Warning:</b> d = {d:.2f} is at its limit (1–5); the "
+                if min(abs(d - 1), abs(d - 5)) < 0.1:
+                    out.append(hint(f"<b>Warning:</b> d = {d:.2f} is at or near its limit (1–5); the "
                                     "Fractal model may not suit this trace."))
         run = button("Run validation", "primary")
         run.on_click(self._on_run)

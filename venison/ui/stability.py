@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-import numpy as np
+import threading
+from functools import partial
+
 import panel as pn
 from bokeh.models import BoxAnnotation, ColumnDataSource
 
@@ -24,6 +26,8 @@ class StabilityTab(Tab):
             self._apply(int(getattr(spec, "instability_index", default_idx)))
         idx = int(spec.instability_index)
         renormalized = self._renormalized(idx)
+        # Factor the regularization system now, so the first drag tick doesn't.
+        threading.Thread(target=A.prepare_regularizer, args=(spec,), daemon=True).start()
 
         ymax = float(spec.solution.max() * 1.1)
         p_sol = plot(DISTANCE_LABEL, "P(r)", height=300, y_range=(0, ymax))
@@ -59,7 +63,7 @@ class StabilityTab(Tab):
         self._slider = sidebar_widget(pn.widgets.FloatSlider(
             name="Instability point (nm)", start=float(spec.r[0]), end=float(spec.r[-1]),
             step=dr, value=float(spec.r[idx]), format="0.00"))
-        # Live while dragging (~0.1 s per re-regularization); saved on release.
+        # Live while dragging; saved on release.
         self._slider.param.watch(lambda e: self._update(save=False), "value")
         self._slider.param.watch(lambda e: self._update(save=True), "value_throttled")
         reset = button("Reset to default")
@@ -71,13 +75,13 @@ class StabilityTab(Tab):
         return main, side
 
     def _renormalized(self, idx):
-        mask = np.zeros_like(self.spec.r)
-        mask[idx:] = 1
-        sol = self.spec.solution
-        return sol / np.trapezoid(sol - sol * mask)
+        return A.renormalized_solution(self.spec, idx)
 
     def _apply(self, idx, save=True):
         A.apply_stability_cutoff(self.spec, idx)
+        self._commit(idx, save)
+
+    def _commit(self, idx, save):
         # Gaussian models were fit to the previous stable distribution.
         self.spec.gauss_fitted = None
         if save:
@@ -89,12 +93,52 @@ class StabilityTab(Tab):
         self._slider.value = float(self.spec.r[idx])
         self._update(save=True)
 
+    # A drag sends ticks faster than a re-regularization (~40 ms) finishes, and
+    # refitting on every tick inline queued them up so the plots trailed the
+    # slider by seconds. Instead each tick only records where the slider is;
+    # one worker thread refits to the latest position (skipping any it has
+    # been overtaken on) and hands the result back to the event loop.
     def _update(self, save):
         spec = self.spec
         idx = A.nearest_index(spec.r, self._slider.value)
         self._cut.location = float(spec.r[idx])
-        self._apply(idx, save=save)
         self._renorm.data = {"x": spec.r, "y": self._renormalized(idx)}
+        self._target = idx
+        self._save_pending = getattr(self, "_save_pending", False) or save
+        if not getattr(self, "_refitting", False):
+            self._refitting = True
+            threading.Thread(target=self._refit_latest, args=(pn.state.curdoc,),
+                             daemon=True).start()
+
+    def _refit_latest(self, doc):
+        spec = self.spec
+        while True:
+            idx = self._target
+            try:
+                result = A.stability_cutoff(spec, idx)
+            except Exception as exc:
+                result = exc
+            if idx == self._target:
+                break
+        finish = partial(self._show_refit, idx, result)
+        if doc is not None:
+            doc.add_next_tick_callback(finish)
+        else:  # no browser session (tests)
+            finish()
+
+    def _show_refit(self, idx, result):
+        spec = self.spec
+        self._refitting = False
+        if isinstance(result, Exception):
+            self.app.notify(f"Stability refit failed: {result}", "error")
+            return
+        for key, value in result.items():
+            setattr(spec, key, value)
         self._stable.data = {"x": spec.r, "y": spec.stable_solution}
         self._swave.data = {"x": spec.t, "y": spec.stable_waveform}
         self._sfit.data = {"x": spec.t, "y": spec.stable_fit}
+        if idx != self._target:  # the slider moved on while this was shown
+            self._update(save=False)
+            return
+        save, self._save_pending = self._save_pending, False
+        self._commit(idx, save)
