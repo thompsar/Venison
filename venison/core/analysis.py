@@ -49,11 +49,14 @@ def set_slice_mask(spec, mask) -> None:
 def complex_signal(spec) -> np.ndarray:
     """Unphased, slice-averaged complex signal.
 
-    Re-averages from the slice mask rather than reading `spec.real`, which
-    the phasing step overwrites with the phased trace.
+    Averaged from the slice mask rather than read from `spec.real`, which the
+    phasing step overwrites with the phased trace. Same normalization as
+    `spectrum.avg_slices`, without mutating the spectrum.
     """
-    spec.avg_slices()
-    return spec.real + 1j * spec.imaginary
+    real = np.sum(spec.real2D[spec.slice_mask], axis=0)
+    imag = np.sum(spec.imaginary2D[spec.slice_mask], axis=0)
+    peak = np.max(real)
+    return real / peak + 1j * imag / peak
 
 
 def auto_phase(signal, raw_time, cutoff) -> float:
@@ -141,12 +144,20 @@ class LCurve:
 
 def compute_lcurve(spec) -> LCurve:
     spec.generate_lcurve()
-    residual = np.linalg.norm(spec.tikhonovfits - spec.waveform, axis=1) ** 2
-    solution = np.linalg.norm(np.dot(spec.Lmatrix, spec.solutions.T).T, axis=1) ** 2
+    # Validation later swaps spec.waveform; keep the one this L-curve fit.
+    spec.lcurve_waveform = np.array(spec.waveform)
+    spec.lcurve_residual = np.linalg.norm(spec.tikhonovfits - spec.waveform, axis=1) ** 2
+    spec.lcurve_solution = np.linalg.norm(np.dot(spec.Lmatrix, spec.solutions.T).T, axis=1) ** 2
     # Carried over from the notebook, which flags this LOOCV estimate as
     # unverified.
-    loocv = int((residual / (np.sum(1 - spec.hMats, axis=1)) ** 2).argmin())
-    return LCurve(residual, solution, loocv)
+    spec.lcurve_loocv = int(
+        (spec.lcurve_residual / (np.sum(1 - spec.hMats, axis=1)) ** 2).argmin())
+    return lcurve_of(spec)
+
+
+def lcurve_of(spec) -> LCurve:
+    """The L-curve last computed for this spectrum."""
+    return LCurve(spec.lcurve_residual, spec.lcurve_solution, int(spec.lcurve_loocv))
 
 
 def select_alpha(spec, index: int) -> None:
@@ -202,11 +213,19 @@ def validate_background(spec, end_offset: int = 100) -> Validation:
     if gaps.size:
         inside = inside[:gaps[0] + 1]
 
+    spec.validation_rmsd = rmsd
+    spec.validation_min_index = min_index
+    spec.validation_well = np.array([inside[0], inside[-1]])
+    return validation_of(spec)
+
+
+def validation_of(spec) -> Validation:
+    """The background validation last run for this spectrum."""
     return Validation(
         fit_points=np.asarray(spec.background_fit_points),
-        rmsd=rmsd,
-        min_index=min_index,
-        well=(int(inside[0]), int(inside[-1])),
+        rmsd=spec.validation_rmsd,
+        min_index=int(spec.validation_min_index),
+        well=tuple(int(v) for v in spec.validation_well),
     )
 
 
@@ -289,14 +308,23 @@ def bic(data, fit, n_model_params):
 class GaussianModels:
     """Fitting state for the 1..n Gaussian models (the notebook's flag arrays)."""
 
-    def __init__(self, spec, ngauss: int = 5):
+    # Fitting state is stored on the spectrum so it is saved with it.
+    def __init__(self, spec, ngauss: int = 5, reset: bool = True):
         self.spec = spec
         self.ngauss = ngauss
-        spec.gaussian_model_init(ngauss)
-        self.fitted = np.zeros(ngauss, dtype=bool)
-        self.optimized = np.zeros(ngauss, dtype=bool)
-        self.bics = np.full(ngauss, np.inf)
-        self.rmsds = np.zeros(ngauss)
+        if reset or getattr(spec, "gauss_fitted", None) is None:
+            spec.gaussian_model_init(ngauss)
+            spec.gauss_fitted = np.zeros(ngauss, dtype=bool)
+            spec.gauss_optimized = np.zeros(ngauss, dtype=bool)
+            spec.gauss_bics = np.full(ngauss, np.inf)
+            spec.gauss_rmsds = np.zeros(ngauss)
+        else:
+            self.ngauss = len(spec.gauss_fitted)
+
+    fitted = property(lambda self: self.spec.gauss_fitted)
+    optimized = property(lambda self: self.spec.gauss_optimized)
+    bics = property(lambda self: self.spec.gauss_bics)
+    rmsds = property(lambda self: self.spec.gauss_rmsds)
 
     def model(self, m: int) -> np.ndarray:
         return self.spec.gaussian_model(m)

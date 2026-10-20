@@ -43,3 +43,6 @@ version = { attr = "venison.__version__" }
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
+
+[tool.setuptools.package-data]
+"venison.assets" = ["*.css"]

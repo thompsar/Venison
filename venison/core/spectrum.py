@@ -38,7 +38,9 @@ class spectrum():
             parser = np.load(self.path, allow_pickle=True)
             # NOTE: https://stackoverflow.com/questions/2466191/set-attributes-from-dictionary-in-python
             for key in parser:
-                setattr(self, key, parser[key])
+                value = parser[key]
+                # savez wraps scalars, dicts and functions in 0-d arrays; unwrap them
+                setattr(self, key, value.item() if value.ndim == 0 else value)
 
         else:    
             self.metadata = {}
