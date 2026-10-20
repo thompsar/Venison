@@ -111,7 +111,7 @@ class VenisonApp(param.Parameterized):
     # ── Layout ───────────────────────────────────────────────────────────────
 
     def _build_top_bar(self):
-        wordmark = pn.pane.HTML('<div class="vn-wordmark">Ven<span>i</span>son</div>',
+        wordmark = pn.pane.HTML('<div class="vn-wordmark">Venison</div>',
                                 margin=(0, 6, 0, 0), align="center")
         version = pn.pane.HTML(f'<div class="vn-version">v{__version__}</div>', align="center",
                                margin=0)

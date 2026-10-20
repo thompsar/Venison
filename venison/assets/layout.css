@@ -41,7 +41,6 @@ html, body {
   color: var(--vn-text);
   white-space: nowrap;
 }
-.vn-wordmark span { color: var(--vn-accent); }
 .vn-version {
   font-size: 10px;
   color: var(--vn-text-muted);

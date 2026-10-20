@@ -20,9 +20,9 @@ import webbrowser
 LOADING_HTML = """<!DOCTYPE html><html><head><style>
 body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;
 background:#FAF9F7;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
-.w{font-size:34px;font-weight:700;letter-spacing:-.02em;color:#26211E}.w span{color:#9A4B2C}
+.w{font-size:34px;font-weight:700;letter-spacing:-.02em;color:#26211E}
 .s{margin-top:10px;font-size:13px;color:#7A706A;text-align:center}
-</style></head><body><div><div class="w">Ven<span>i</span>son</div>
+</style></head><body><div><div class="w">Venison</div>
 <div class="s">Starting…</div></div></body></html>"""
 
 
