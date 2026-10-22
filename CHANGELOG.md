@@ -38,5 +38,6 @@ release.
 **Changed**
 - Exports are the same CSV tables and `.npz` file as before, written into the
   project's `results/` and `processed/` folders.
-- Needs Python 3.11 or newer (see INSTALL.md for a separate environment that
-  leaves an existing notebook setup alone).
+- Needs Python 3.11 or newer. INSTALL.md installs it in its own environment
+  (with conda, or with uv if you don't have conda), leaving any existing
+  notebook setup alone.

@@ -5,7 +5,7 @@ Monte Carlo sum of Gaussians), with a desktop app for the full workflow.
 
 ## Getting started
 
-On a Mac with Anaconda or Miniconda, from the Venison folder:
+From the Venison folder, with conda:
 
 ```bash
 conda env create -f environment.yml    # once
@@ -13,7 +13,14 @@ conda activate venison
 venison
 ```
 
-Step-by-step instructions, updating and troubleshooting are in
+or, without conda, with [uv](https://docs.astral.sh/uv/) (it brings its own Python):
+
+```bash
+uv tool install --python 3.12 .        # once
+venison
+```
+
+Step-by-step instructions for a Mac, updating and troubleshooting are in
 [INSTALL.md](INSTALL.md). `venison --help` lists the options (for example
 `--no-webview` to use your browser instead of a window).
 
