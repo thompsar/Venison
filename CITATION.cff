@@ -11,6 +11,7 @@ authors:
   - family-names: Thompson
     given-names: Andrew
     orcid: "https://orcid.org/0000-0001-8537-6776"
+    affiliation: "University of Minnesota"
 version: 2026.10.0
 license: MIT
 repository-code: "https://github.com/thompsar/Venison"
