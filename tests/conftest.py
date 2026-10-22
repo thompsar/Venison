@@ -25,6 +25,12 @@ def prepare_example(model="3D", background_start=None, lcurve=False):
     return s
 
 
+@pytest.fixture(autouse=True)
+def no_update_check(monkeypatch):
+    """Tests never ask GitHub for the latest release."""
+    monkeypatch.setenv("VENISON_NO_UPDATE_CHECK", "1")
+
+
 @pytest.fixture
 def example_bytes():
     """The example's raw .DSC and .DTA contents, for ingest tests."""

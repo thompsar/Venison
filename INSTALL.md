@@ -1,82 +1,48 @@
 # Installing Venison
 
-These steps are for a Mac. Venison runs in its own Python environment, so
-whatever you already use (for example to run the Venison notebook) is left
-alone.
+These steps are for a Mac (Linux works the same way). Venison runs in its own
+Python environment, so whatever you already have, including a setup for the
+Venison notebook, is left alone.
 
-## 1. Get Venison
+## Install
 
-**Either** download it: open the
-[latest release](https://github.com/thompsar/Venison/releases/latest), download
-**Source code (zip)** under *Assets*, and unzip it somewhere you'll keep it
-(for example `~/Applications/Venison`).
-
-**Or**, if you use git:
+Open **Terminal** (in Applications → Utilities, or search for it with
+Spotlight), paste this line, and press Return:
 
 ```bash
-git clone https://github.com/thompsar/Venison.git
+curl -LsSf https://raw.githubusercontent.com/thompsar/Venison/master/install.sh | sh
 ```
 
-## 2. Install (once)
+It installs the latest release of Venison, together with
+[uv](https://docs.astral.sh/uv/), a small tool that gives Venison its own copy
+of Python. It takes a minute or two the first time.
 
-Open Terminal and go to the Venison folder: type `cd ` (with a space), drag
-the folder onto the Terminal window, and press Return.
+## Run
 
-Then check whether you have conda (it comes with Anaconda, Miniconda and
-Miniforge):
-
-```bash
-conda --version
-```
-
-### If that printed a version: use conda
-
-```bash
-conda env create -f environment.yml
-```
-
-This creates an environment called `venison` with Python 3.12 and everything
-Venison needs (a few minutes, a few hundred MB). To run Venison:
-
-```bash
-conda activate venison
-venison
-```
-
-### If it said `command not found`: use uv
-
-[uv](https://docs.astral.sh/uv/) is a small installer that brings its own
-Python, so it doesn't matter which Python you have, or whether you have one.
-Install uv:
-
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
-Open a **new** Terminal window (so it finds `uv`), go to the Venison folder
-again, and install Venison:
-
-```bash
-uv tool install --python 3.12 .
-```
-
-To run Venison:
+Open a **new** Terminal window and type:
 
 ```bash
 venison
 ```
-
-## 3. Run
 
 Venison opens in its own window. To quit, close the window (or press
-Control-C in Terminal). Next time, open Terminal and run the same command(s)
-as above; you don't need to be in the Venison folder.
+Control-C in Terminal). Next time, just open Terminal and type `venison` again.
+
+## Update
+
+When a new version is out, Venison shows a notice at the top of its window.
+Quit Venison and run the **same install line** again:
+
+```bash
+curl -LsSf https://raw.githubusercontent.com/thompsar/Venison/master/install.sh | sh
+```
+
+Your projects aren't affected: they live in their own folder
+(`~/venison_projects` unless you chose another).
 
 ## Your first analysis
 
 1. On the **Project** tab, click **Create project** and give it a name.
-   Projects are kept in `~/venison_projects` (you can choose another folder in
-   the sidebar).
 2. Drag your spectrum's `.DSC` and `.DTA` files into **Add spectra**, add an
    optional sample and condition, and click **Add**.
 3. Work through the tabs on the left from top to bottom. A green dot marks
@@ -84,27 +50,15 @@ as above; you don't need to be in the Venison folder.
 4. On **Results**, click **Export results**. Tables are written to the
    project's `results/` folder and a reloadable `.npz` to `processed/`.
 
-To try it first, use the example spectrum in the Venison folder:
-`data/raw/example_2dDEER.DSC` and `.DTA`.
-
-## Updating
-
-Download and unzip the new release (or `git pull` in your clone), go to the
-Venison folder in Terminal, and run the line for your install:
-
-```bash
-conda env update -f environment.yml --prune      # conda
-uv tool install --python 3.12 --reinstall .      # uv
-```
-
-Your projects aren't affected: they live in their own folder, not inside
-Venison's.
+To try it first, download the example spectrum's
+[`.DSC`](https://github.com/thompsar/Venison/raw/master/data/raw/example_2dDEER.DSC)
+and [`.DTA`](https://github.com/thompsar/Venison/raw/master/data/raw/example_2dDEER.DTA)
+files.
 
 ## If something goes wrong
 
-- **`venison: command not found`**: with conda, run `conda activate venison`
-  first. With uv, open a new Terminal window; if it's still missing, run
-  `uv tool update-shell` and open another one.
+- **`venison: command not found`**: open a new Terminal window. If it's still
+  missing, run `~/.local/bin/uv tool update-shell` and open another one.
 - **The window stays blank or doesn't open**: run `venison --no-webview` to
   use your web browser instead.
 - **"Port 5007 is already in use"**: Venison is already running (look for its
@@ -114,10 +68,22 @@ Venison's.
   name in the top left) when you
   [report the problem](https://github.com/thompsar/Venison/issues/new/choose).
 
+To remove Venison: `uv tool uninstall venison` (your projects stay).
+
 ## Other ways to install
 
-Any Python 3.11 or newer works with a virtual environment, from the Venison
-folder:
+**With conda** (Anaconda, Miniconda, Miniforge): download **Source code
+(zip)** from the [latest release](https://github.com/thompsar/Venison/releases/latest),
+unzip it, and from that folder in Terminal:
+
+```bash
+conda env create -f environment.yml     # once; to update: conda env update -f environment.yml --prune
+conda activate venison
+venison
+```
+
+**From a source folder** (a release zip or a git clone), with any Python 3.11
+or newer:
 
 ```bash
 python3 -m venv .venv
@@ -126,5 +92,4 @@ pip install .
 venison
 ```
 
-(Then run `source .venv/bin/activate` from the Venison folder before
-`venison` each time.)
+The update notice can be turned off by setting `VENISON_NO_UPDATE_CHECK=1`.

@@ -6,7 +6,9 @@ import asyncio
 import html
 import json
 import os
+import threading
 import traceback
+from functools import partial
 from importlib.resources import files as res_files
 from pathlib import Path
 
@@ -107,6 +109,7 @@ class VenisonApp(param.Parameterized):
             except Exception as exc:
                 print(f"Could not reopen {last}: {exc}")
         self.switch_tab(0)
+        self._check_for_update()
 
     # ── Layout ───────────────────────────────────────────────────────────────
 
@@ -139,11 +142,51 @@ class VenisonApp(param.Parameterized):
                                  css_classes=["vn-sidebar"])
         self.content = pn.Column(sizing_mode="stretch_both", margin=0,
                                  styles={"overflow-y": "auto", "min-height": "0"})
+        self._update_banner = pn.Row(visible=False, sizing_mode="stretch_width", margin=0,
+                                     css_classes=["vn-update"])
         self.layout = pn.Column(
             self.top_bar,
+            self._update_banner,
             pn.Row(self.rail, self.sidebar, self.content, sizing_mode="stretch_both", margin=0),
             sizing_mode="stretch_both", margin=0, styles={"height": "100vh"},
         )
+
+    # ── Update notice ────────────────────────────────────────────────────────
+
+    def _check_for_update(self):
+        """Ask GitHub for the latest release off the event loop (a few
+        seconds at most, once per process) and show a banner if it's newer."""
+        from venison.core.updates import newer_release
+
+        doc = pn.state.curdoc
+
+        def work():
+            latest = newer_release(__version__)
+            if latest:
+                show = partial(self._show_update, latest)
+                doc.add_next_tick_callback(show) if doc is not None else show()
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _show_update(self, latest: str):
+        from venison.core.updates import INSTALL_LINE
+
+        copy = pn.widgets.Button(name="Copy", button_type="light", margin=(0, 4),
+                                 align="center", width=70)
+        copy.js_on_click(args={"line": INSTALL_LINE}, code="""
+            navigator.clipboard.writeText(line);
+            cb_obj.label = "Copied";
+        """)
+        dismiss = pn.widgets.Button(name="Dismiss", button_type="light", margin=(0, 8, 0, 4),
+                                    align="center", width=80)
+        dismiss.on_click(lambda e: setattr(self._update_banner, "visible", False))
+        message = pn.pane.HTML(
+            f'<div class="vn-update-text"><b>Venison {html.escape(latest)} is available</b> '
+            f'(you have {__version__}). To update, quit Venison and paste into Terminal: '
+            f'<code>{html.escape(INSTALL_LINE)}</code></div>',
+            sizing_mode="stretch_width", margin=(0, 0, 0, 14), align="center")
+        self._update_banner[:] = [message, copy, dismiss]
+        self._update_banner.visible = True
 
     def _render_status(self, _event=None, message: str = ""):
         text = self.busy or message

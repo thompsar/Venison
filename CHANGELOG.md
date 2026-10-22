@@ -27,6 +27,8 @@ release.
 - Sliders update the plots while you drag, as in the notebook; the Stability
   cutoff now does too, fast enough to follow the slider.
 - Plot colors chosen to stay distinguishable with common color blindness.
+- One-line install and update (see INSTALL.md), and a notice in the app when
+  a newer release is available.
 
 **Fixed (compared with the notebook)**
 - The validation minimum could be taken from the wrong position in the sweep.
@@ -38,6 +40,5 @@ release.
 **Changed**
 - Exports are the same CSV tables and `.npz` file as before, written into the
   project's `results/` and `processed/` folders.
-- Needs Python 3.11 or newer. INSTALL.md installs it in its own environment
-  (with conda, or with uv if you don't have conda), leaving any existing
-  notebook setup alone.
+- Needs Python 3.11 or newer; the installer provides it in Venison's own
+  environment, leaving any existing notebook setup alone.
