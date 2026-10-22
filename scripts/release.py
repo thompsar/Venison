@@ -133,7 +133,10 @@ def main() -> int:
     run("git", "push", "origin", tag)
     with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False) as f:
         f.write(notes + "\n")
-    run("gh", "release", "create", tag, "--repo", REPO, "--verify-tag",
+    # --latest: GitHub would otherwise keep pointing "latest" (and the
+    # releases/latest links in INSTALL.md) at whatever it judges newest,
+    # which can be the non-CalVer notebook-final snapshot.
+    run("gh", "release", "create", tag, "--repo", REPO, "--verify-tag", "--latest",
         "--title", f"Venison {version}", "--notes-file", f.name)
     described = run("git", "describe", "--tags", "--exact-match", "HEAD", check=False)
     if described != tag:
