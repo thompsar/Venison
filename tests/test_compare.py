@@ -79,3 +79,14 @@ def test_hiding_a_spectrum(app):
     tab.refresh()
     tab._on_pick([{"name": "first"}, {"name": "second"}], ["second"])
     assert _legend_labels(tab) == [["second (WT + ligand)"]] * 2
+
+
+def test_cache_holds_only_curves(app):
+    import numpy as np
+    from venison.ui.compare import Curves
+    tab = next(t for t in app.tabs if t.title == "Compare")
+    tab.refresh()
+    assert tab._cache and all(isinstance(c, Curves) for _, c in tab._cache.values())
+    size = sum(a.nbytes for _, c in tab._cache.values() for a in vars(c).values()
+               if isinstance(a, np.ndarray))
+    assert size < 100_000

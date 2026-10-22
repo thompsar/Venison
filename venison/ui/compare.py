@@ -54,20 +54,23 @@ class CompareTab(Tab):
         super().__init__(app)
         self._mode = "Tikhonov"
         self._hidden: set[str] = set()
-        self._cache: dict[str, tuple[float, object]] = {}  # name -> (workspace mtime, spec)
+        # (name, mode) -> (workspace mtime, Curves). Only the plotted arrays are
+        # kept (a few kB each), not the whole saved analysis (10-20 MB each).
+        self._cache: dict[tuple[str, str], tuple[float, Curves]] = {}
 
     # ── Data ─────────────────────────────────────────────────────────────────
 
-    def _spec_for(self, name: str):
-        """The spectrum's saved analysis; the open one comes straight from memory."""
+    def _curves_for(self, name: str, mode: str) -> Curves:
+        """Plotted curves for a spectrum; the open one comes straight from memory."""
         session = self.app.session
         if session is not None and session.name == name:
-            return session.spec
+            return curves(session.spec, mode)
         npz, _ = self.app.project.workspace_paths(name)
         mtime = npz.stat().st_mtime
-        cached = self._cache.get(name)
+        cached = self._cache.get((name, mode))
         if cached is None or cached[0] != mtime:
-            cached = self._cache[name] = (mtime, SpectrumSession(self.app.project, name).spec)
+            spec = SpectrumSession(self.app.project, name).spec  # loaded, used, dropped
+            cached = self._cache[(name, mode)] = (mtime, curves(spec, mode))
         return cached[1]
 
     # ── View ─────────────────────────────────────────────────────────────────
@@ -117,7 +120,7 @@ class CompareTab(Tab):
         failed = []
         for s in shown:
             try:
-                c = curves(self._spec_for(s["name"]), self._mode)
+                c = self._curves_for(s["name"], self._mode)
             except Exception as exc:  # unreadable or incomplete saved analysis
                 failed.append(f"{s['name']}: {exc}")
                 continue
