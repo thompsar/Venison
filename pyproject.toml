@@ -7,7 +7,7 @@ authors = [
 ]
 readme = "README.md"
 license = { text = "MIT" }
-requires-python = ">=3.10"
+requires-python = ">=3.11"   # numpy 2.3 / scipy 1.16 need 3.11+
 
 # Pinned to a known-good, mutually tested set. Bokeh in particular is pinned
 # exactly: 3.8 changes how BokehJS is delivered to the browser, so it should
@@ -25,6 +25,9 @@ dependencies = [
   "pythonnet>=3.0.3,<3.1; sys_platform == 'win32'",
   "clr-loader>=0.2.6,<0.3; sys_platform == 'win32'",
 ]
+
+[project.scripts]
+venison = "venison.launcher:main"
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]

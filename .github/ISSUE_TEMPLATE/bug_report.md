@@ -1,38 +1,32 @@
 ---
 name: Bug report
-about: Create a report to help us improve
+about: Something in Venison doesn't work as expected
 title: ''
-labels: ''
+labels: bug
 assignees: ''
 
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+**What happened**
+What you did, what you expected, and what happened instead.
 
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+**Steps to reproduce**
+1. Tab: '...'
+2. Setting or button: '...'
+3. ...
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+**Version and system**
+- Venison version (next to the name in the top left):
+- macOS version:
+- Installed with: conda / pip
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+**Console output**
+Open the Console tab (bottom of the left rail) and paste what it shows:
 
-**Desktop (please complete the following information):**
- - OS: [e.g. iOS]
- - Browser [e.g. chrome, safari]
- - Version [e.g. 22]
+```
+```
 
-**Smartphone (please complete the following information):**
- - Device: [e.g. iPhone6]
- - OS: [e.g. iOS8.1]
- - Browser [e.g. stock browser, safari]
- - Version [e.g. 22]
-
-**Additional context**
-Add any other context about the problem here.
+**Screenshots or data**
+A screenshot helps. If you can share the spectrum (.DSC/.DTA) that shows the
+problem, say so and we'll arrange how to send it; please don't attach
+unpublished data to a public issue.

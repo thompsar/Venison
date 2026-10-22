@@ -1,0 +1,13 @@
+# Conda environment for Venison. From the folder containing this file:
+#   conda env create -f environment.yml
+#   conda activate venison
+#   venison
+# The package dependencies (pinned) come from pyproject.toml via pip.
+name: venison
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - pip:
+      - -e .

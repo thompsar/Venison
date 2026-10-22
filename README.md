@@ -5,16 +5,21 @@ Monte Carlo sum of Gaussians), with a desktop app for the full workflow.
 
 ## Getting started
 
+On a Mac with Anaconda or Miniconda, from the Venison folder:
+
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e .
-python launch_venison.py
+conda env create -f environment.yml    # once
+conda activate venison
+venison
 ```
 
-This opens Venison in its own window. Use `--no-webview` to open it in your
-browser instead, `--no-browser` to only start the server, and `--port` to
-change the port (default 5007).
+Step-by-step instructions, updating and troubleshooting are in
+[INSTALL.md](INSTALL.md). `venison --help` lists the options (for example
+`--no-webview` to use your browser instead of a window).
+
+The last notebook-only version is the
+[`notebook-final`](https://github.com/thompsar/Venison/releases/tag/notebook-final)
+release. What's changed since is in [CHANGELOG.md](CHANGELOG.md).
 
 ## Workflow
 
@@ -55,8 +60,8 @@ spectra, analyzed one at a time:
 ```
 venison/core/   analysis code with no UI dependencies (spectrum, analysis steps, export, projects)
 venison/ui/     one module per tab
-venison/app.py  main window
-launch_venison.py
+venison/app.py  main window; venison/launcher.py starts it
+launch_venison.py   same as the `venison` command, from a source checkout
 tests/          pytest suite (runs the full workflow on data/raw/example_2dDEER)
 ```
 
