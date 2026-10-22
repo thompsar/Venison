@@ -7,6 +7,7 @@ import panel as pn
 from bokeh.models import ColumnDataSource
 
 from venison.core import analysis as A
+from venison.core.background_models import fractal_d_at_limit
 from venison.ui.common import (COLORS, DISTANCE_LABEL, TIME_LABEL, Tab, button, card, grid,
                                hint, line, plot, points, section, sidebar_widget, vline,
                                zero_line)
@@ -67,7 +68,7 @@ class ValidationTab(Tab):
                 out += [self._hold_d,
                         hint("Left free, d swings from trial to trial and makes the RMSD "
                              "curve jump between bands.")]
-                if min(abs(d - 1), abs(d - 5)) < 0.1:
+                if fractal_d_at_limit(d):
                     out.append(hint(f"<b>Warning:</b> d = {d:.2f} is at or near its limit (1–5); the "
                                     "Fractal model may not suit this trace."))
         run = button("Run validation", "primary")

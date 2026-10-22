@@ -1,22 +1,25 @@
 """The fast regularization used by the Stability tab must match the original."""
 
-import os
+import pickle
 
 import numpy as np
 
+from conftest import prepare_example
 from venison.core import analysis as A
-from venison.core.spectrum import spectrum
 
-EXAMPLE = os.path.join(os.path.dirname(__file__), "..", "data", "raw", "example_2dDEER.DTA")
+
+def test_regularizer_cache_is_not_pickled():
+    # Multiprocessing pickles the whole spectrum for every task.
+    s = prepare_example(background_start=1.0)
+    s.alpha = s.alphas[26]
+    size = len(pickle.dumps(s))
+    A.prepare_regularizer(s)
+    assert len(pickle.dumps(s)) == size
+    assert not any(k.startswith("_") for k in pickle.loads(pickle.dumps(s)).__dict__)
 
 
 def test_fast_regularization_matches_original():
-    s = spectrum(EXAMPLE)
-    sig = A.complex_signal(s)
-    c = s.raw_time[-1]
-    A.apply_phase_and_cutoff(s, A.auto_phase(sig, s.raw_time, c), c)
-    A.fit_zero_point(s, A.symmetry_point(s.raw_time))
-    A.fit_background(s, 1.0)
+    s = prepare_example(background_start=1.0)
     s.alpha = s.alphas[26]
     s.solution = s.alpha_regularize(s.alpha)
 

@@ -2,14 +2,12 @@
 
 import contextlib
 import io
-import os
 
 import numpy as np
 
+from conftest import prepare_example
 from venison.core import analysis as A
-from venison.core.spectrum import spectrum
 
-EXAMPLE = os.path.join(os.path.dirname(__file__), "..", "data", "raw", "example_2dDEER.DTA")
 X = np.linspace(0.2, 5, 100)
 
 
@@ -30,19 +28,15 @@ def test_minimum_on_first_trial_is_skipped():
     assert lo <= m <= hi
 
 
-def _prepared(model):
-    s = spectrum(EXAMPLE)
-    sig = A.complex_signal(s)
-    c = s.raw_time[-1]
-    A.apply_phase_and_cutoff(s, A.auto_phase(sig, s.raw_time, c), c)
-    A.fit_zero_point(s, A.symmetry_point(s.raw_time))
-    A.fit_background(s, s.background_start, model)
-    A.select_alpha(s, A.compute_lcurve(s).loocv_index)
-    return s
+def test_last_trial_can_be_the_minimum():
+    # Rises from the first trial, then falls all the way to the end of the sweep.
+    rmsd = 2 + np.exp(-((X - 0.6) / 0.3) ** 2) - X / 5
+    m, (lo, hi) = A.suggest_range(rmsd, dof=600)
+    assert m == len(rmsd) - 1 == hi
 
 
 def test_fractal_dimension_held_fixed():
-    s = _prepared("Fractal")
+    s = prepare_example("Fractal", lcurve=True)
     d = s.bg_tab_fractal_d
     assert d is not None
     with contextlib.redirect_stdout(io.StringIO()):

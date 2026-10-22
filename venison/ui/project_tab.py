@@ -307,6 +307,11 @@ class ProjectTab(Tab):
             except ValueError:
                 rejected.append(f"{fname}: unsupported characters in the file name")
                 continue
+            if isinstance(data, str):
+                # FileDropper decodes files with a text/* MIME type as UTF-8, and
+                # some systems (e.g. Linux) call .dsc text. Re-encoding a string
+                # that decoded cleanly gives back the original bytes.
+                data = data.encode("utf-8")
             self._staged.setdefault(stem, {})[ext] = data
         for msg in rejected:
             self.app.notify(msg, "warning")

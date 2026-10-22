@@ -6,7 +6,7 @@ from multiprocessing import Pool, cpu_count
 from scipy import optimize
 from scipy.stats import f as ftest
 
-from venison.core.background_models import bg3D,bgFractal
+from venison.core.background_models import FRACTAL_FIT_BOUNDS, bg3D, bgFractal
 
 class spectrum():
     """Class that loads and parses Bruker DEER spectrum files, assumes DTA and DSC files present
@@ -87,6 +87,14 @@ class spectrum():
         
         self.avg_slices()
         
+    def __getstate__(self):
+        """State without in-memory caches (attributes starting with "_").
+
+        Used for pickling, which multiprocessing does to the whole spectrum for
+        every task it dispatches, and for saving to .npz.
+        """
+        return {k: v for k, v in self.__dict__.items() if not k.startswith("_")}
+
     def set_defaults(self):
         self.dimensions = 512
         self.rmin = 1.0
@@ -177,7 +185,7 @@ class spectrum():
         elif self.bgmodel == bgFractal:
             try:
                 bgfit=optimize.curve_fit(model,self.raw_time[background_range],
-                             self.real[background_range], bounds=[[0,0,1],[np.inf,np.inf,5]])[0]
+                             self.real[background_range], bounds=FRACTAL_FIT_BOUNDS)[0]
                 self.background = model(self.raw_time,*bgfit)
                 self.fractal_d = float(bgfit[2])
             except RuntimeError:

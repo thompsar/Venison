@@ -1,5 +1,3 @@
-import os
-
 import numpy as np
 import pytest
 
@@ -7,18 +5,10 @@ from venison.core import analysis as A
 from venison.core.project import Project, create_project, list_projects
 from venison.core.session import SpectrumSession
 
-RAW = os.path.join(os.path.dirname(__file__), "..", "data", "raw", "example_2dDEER")
-
-
-def _bytes(ext):
-    with open(RAW + ext, "rb") as f:
-        return f.read()
-
-
 @pytest.fixture
-def project(tmp_path):
+def project(tmp_path, example_bytes):
     proj = create_project(tmp_path, "Demo")
-    proj.add_spectrum("example", _bytes(".DSC"), _bytes(".DTA"), sample="WT", condition="apo")
+    proj.add_spectrum("example", *example_bytes, sample="WT", condition="apo")
     return proj
 
 
@@ -31,14 +21,14 @@ def test_create_and_list(tmp_path, project):
         create_project(tmp_path, "../escape")
 
 
-def test_labels_and_hand_dropped_files(project):
+def test_labels_and_hand_dropped_files(project, example_bytes):
     (row,) = project.spectra()
     assert (row["sample"], row["condition"]) == ("WT", "apo")
     project.update_labels("example", notes="first run")
     assert project.spectra()[0]["notes"] == "first run"
     raw = project.path / "raw_data"
-    (raw / "copied.DSC").write_bytes(_bytes(".DSC"))
-    (raw / "copied.DTA").write_bytes(_bytes(".DTA"))
+    (raw / "copied.DSC").write_bytes(example_bytes[0])
+    (raw / "copied.DTA").write_bytes(example_bytes[1])
     assert project.spectrum_names() == ["example", "copied"]
     with pytest.raises(FileExistsError):
         project.add_spectrum("example", b"", b"")

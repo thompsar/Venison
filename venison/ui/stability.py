@@ -123,11 +123,11 @@ class StabilityTab(Tab):
         self._save_pending = getattr(self, "_save_pending", False) or save
         if not getattr(self, "_refitting", False):
             self._refitting = True
-            threading.Thread(target=self._refit_latest, args=(pn.state.curdoc,),
+            threading.Thread(target=self._refit_latest, args=(self.session, pn.state.curdoc),
                              daemon=True).start()
 
-    def _refit_latest(self, doc):
-        spec = self.spec
+    def _refit_latest(self, session, doc):
+        spec = session.spec
         while True:
             idx = self._target
             try:
@@ -136,17 +136,24 @@ class StabilityTab(Tab):
                 result = exc
             if idx == self._target:
                 break
-        finish = partial(self._show_refit, idx, result)
+        finish = partial(self._show_refit, session, idx, result)
         if doc is not None:
             doc.add_next_tick_callback(finish)
         else:  # no browser session (tests)
             finish()
 
-    def _show_refit(self, idx, result):
-        spec = self.spec
+    def _show_refit(self, session, idx, result):
         self._refitting = False
+        if session is not self.session:
+            # A different spectrum was opened while this refit ran; it was
+            # computed for the old one, so drop it rather than save it there.
+            self._save_pending = False
+            return
+        spec = session.spec
         if isinstance(result, Exception):
-            self.app.notify(f"Stability refit failed: {result}", "error")
+            if self._save_pending:  # mid-drag failures just skip a frame
+                self.app.notify(f"Stability refit failed: {result}", "error")
+            self._save_pending = False
             return
         for key, value in result.items():
             setattr(spec, key, value)

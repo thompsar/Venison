@@ -207,7 +207,22 @@ class VenisonApp(param.Parameterized):
         self.tabs[0].show_browser()
         self.switch_tab(0)
 
+    def _refuse_while_busy(self) -> bool:
+        """Switching project or spectrum mid-computation would hand the result
+        to the wrong spectrum; refuse and put the picker back."""
+        if not self.busy:
+            return False
+        self.notify("Wait for the current computation to finish before switching.", "warning")
+        self._syncing_select = True
+        try:
+            self._spectrum_select.value = self.session.name if self.session else None
+        finally:
+            self._syncing_select = False
+        return True
+
     def open_project(self, path):
+        if self._refuse_while_busy():
+            return
         project = Project(path)
         self.project = project
         self.config["last_project"] = str(project.path)
@@ -242,6 +257,8 @@ class VenisonApp(param.Parameterized):
             self.open_spectrum(event.new)
 
     def open_spectrum(self, name: str | None):
+        if self._refuse_while_busy():
+            return
         if name is None:
             self.session = None
         else:
@@ -251,6 +268,7 @@ class VenisonApp(param.Parameterized):
                 traceback.print_exc()
                 self.notify(f"Could not open {name}: {exc}", "error")
                 self.session = None
+                name = None  # clear the picker, so picking it again retries
             else:
                 self.project.last_spectrum = name
         self._syncing_select = True
@@ -274,9 +292,11 @@ class VenisonApp(param.Parameterized):
             self.notify("Another computation is still running.", "warning")
             return
         doc = pn.state.curdoc
+        session = self.session
         self.busy = f"{label}…"
         self.content.loading = True
         self.sidebar.styles = {"pointer-events": "none", "opacity": "0.6"}
+        self._spectrum_select.disabled = self._project_btn.disabled = True
         print(f"{label}…")
         try:
             result = await asyncio.get_running_loop().run_in_executor(None, fn)
@@ -289,8 +309,14 @@ class VenisonApp(param.Parameterized):
             self.content.loading = False
             # Explicit values: an emptied dict doesn't clear styles in the browser.
             self.sidebar.styles = {"pointer-events": "auto", "opacity": "1"}
+            self._spectrum_select.disabled = self._project_btn.disabled = False
         if then is not None:
             def finish():
+                # `busy` is already clear by now, so a switch could slip in
+                # before this tick; never apply a result to another spectrum.
+                if self.session is not session:
+                    self.notify(f"{label}: discarded, the open spectrum changed.", "warning")
+                    return
                 try:
                     then(result)
                 except Exception as exc:

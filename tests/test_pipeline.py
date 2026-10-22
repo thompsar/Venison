@@ -5,23 +5,16 @@ import os
 import numpy as np
 import pytest
 
+from conftest import prepare_example
 from venison.core import analysis as A
 from venison.core.export import export_results
 from venison.core.spectrum import spectrum
-
-EXAMPLE = os.path.join(os.path.dirname(__file__), "..", "data", "raw", "example_2dDEER.DTA")
 
 
 @pytest.fixture(scope="module")
 def spec():
     """Spectrum carried through every step with the notebook's default choices."""
-    s = spectrum(EXAMPLE)
-    signal = A.complex_signal(s)
-    cutoff = s.raw_time[-1]
-    A.apply_phase_and_cutoff(s, A.auto_phase(signal, s.raw_time, cutoff), cutoff)
-    A.fit_zero_point(s, A.symmetry_point(s.raw_time))
-    A.fit_background(s, s.background_start, "3D")
-    return s
+    return prepare_example()
 
 
 def test_load(spec):

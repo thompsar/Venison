@@ -6,6 +6,7 @@ import numpy as np
 import panel as pn
 
 from venison.core import analysis as A
+from venison.core.background_models import fractal_d_at_limit
 from venison.ui.common import (COLORS, TIME_LABEL, Tab, card, grid, hint, line, plot, points,
                                section, sidebar_widget, vline, zero_line)
 
@@ -29,13 +30,16 @@ class BackgroundTab(Tab):
         spec = self.spec
         lo, hi = A.zero_window_bounds(spec)
         options = A.background_start_options(spec)
+        # This tab's own start. Validation later replaces spec.background_start
+        # with its pick, which must not leak back into this slider.
+        own_start = getattr(spec, "bg_tab_start", spec.background_start)
         if not self.session.is_done(self.step):
             # First visit (or an earlier step changed): fit with the current
             # settings, falling back to the notebook defaults.
             spec.zero_window = int(np.clip(getattr(spec, "zero_window",
                                                    A.symmetry_point(spec.raw_time)), lo, hi))
             spec.normalizer = str(getattr(spec, "normalizer", A.NORMALIZERS[0]))
-            start = options[A.nearest_index(options, spec.background_start)]
+            start = options[A.nearest_index(options, own_start)]
             self._fit(start, str(getattr(spec, "bgmodel_name", "3D")))
 
         w = int(spec.zero_window)
@@ -74,7 +78,7 @@ class BackgroundTab(Tab):
         dt = float(spec.raw_time[1] - spec.raw_time[0])
         self._start = sidebar_widget(pn.widgets.FloatSlider(
             name="Background start (µs)", start=float(options[0]), end=float(options[-1]),
-            step=dt, value=float(options[A.nearest_index(options, spec.background_start)]),
+            step=dt, value=float(options[A.nearest_index(options, own_start)]),
             format="0.000"))
         # Sliders refit live while dragging, like the notebook; the result is
         # saved (and later steps cleared) once, on release.
@@ -92,8 +96,9 @@ class BackgroundTab(Tab):
                 hint(_EQUATIONS), self._fit_info]
         if self.session.is_done("validation"):
             side.append(hint("<b>Note:</b> the plots show the background chosen on the "
-                             "Validation tab; the parameters above are for the start set "
-                             "here. Changing anything here clears the validation choice."))
+                             "Validation tab; the slider and parameters above are this "
+                             "tab's own start. Changing anything here clears the "
+                             "validation choice."))
         self._show_fit_info()
         return main, side
 
@@ -119,7 +124,7 @@ class BackgroundTab(Tab):
                 row("d", [f"{c.d:.2f}" for c in cols]),
                 row("fit RMSD", [f"{c.rmsd:.2e}" for c in cols])]
         warn = ""
-        if s.model == "Fractal" and min(abs(s.d - 1), abs(s.d - 5)) < 0.1:
+        if s.model == "Fractal" and fractal_d_at_limit(s.d):
             warn = (f"<div class='vn-hint' style='padding:4px 0 0'><b>Warning:</b> d is at or near "
                     f"its limit (1–5); the Fractal model may not suit this range.</div>")
         elif self._model.value == "Fractal" and s.model == "3D":

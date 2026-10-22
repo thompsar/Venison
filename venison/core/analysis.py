@@ -17,7 +17,7 @@ from scipy import optimize
 from scipy.signal import argrelextrema
 from scipy.stats import f as ftest
 
-from venison.core.background_models import bg3D, bgFractal
+from venison.core.background_models import FRACTAL_FIT_BOUNDS, bg3D, bgFractal
 from venison.core.gradient_descent import gradient_descent
 
 BG_MODELS = {"3D": bg3D, "Fractal": bgFractal}
@@ -166,7 +166,7 @@ def summarize_background(spec, start, model_name) -> BackgroundSummary:
     if model_name != "Fractal":
         return three_d
     try:
-        b, c, d = optimize.curve_fit(bgFractal, x, y, bounds=[[0, 0, 1], [np.inf, np.inf, 5]])[0]
+        b, c, d = optimize.curve_fit(bgFractal, x, y, bounds=FRACTAL_FIT_BOUNDS)[0]
     except RuntimeError:
         return three_d  # same fallback the analysis uses
     fractal = BackgroundSummary("Fractal", b, c, d, rmsd_of(bgFractal(spec.raw_time, b, c, d)))
@@ -236,7 +236,7 @@ def background_tab_fractal_d(spec) -> float | None:
         try:
             spec.bg_tab_fractal_d = float(optimize.curve_fit(
                 bgFractal, spec.raw_time[fit_range], spec.real[fit_range],
-                bounds=[[0, 0, 1], [np.inf, np.inf, 5]])[0][2])
+                bounds=FRACTAL_FIT_BOUNDS)[0][2])
         except RuntimeError:
             spec.bg_tab_fractal_d = None
     return spec.bg_tab_fractal_d
@@ -297,13 +297,16 @@ def suggest_range(rmsd, dof: int, stat_cutoff: float = 0.6) -> tuple[int, tuple[
     # NOTE(notebook): the notebook always used the first well. A minimum on the
     # very first trial is the edge of the sweep, not a well (the curve rises
     # from the start), so move on to the next well in that case.
-    peaks = [int(p) for p in argrelextrema(rmsd, np.greater)[0]] + [len(rmsd) - 1]
+    peaks = [int(p) for p in argrelextrema(rmsd, np.greater)[0]]
     start = 0
-    for peak in peaks:
-        left = np.where(rmsd[start:peak] >= rmsd[peak])[0]
-        well_l = start + (int(left[-1]) if left.size else 0)
-        min_index = _min_in_range(rmsd, well_l, peak)
-        if min_index > 0:
+    for peak in peaks + [None]:  # None: the last well runs to the end of the sweep
+        if peak is None:
+            well_l, end = start, len(rmsd)
+        else:
+            left = np.where(rmsd[start:peak] >= rmsd[peak])[0]
+            well_l, end = start + (int(left[-1]) if left.size else 0), peak
+        min_index = _min_in_range(rmsd, well_l, end)
+        if min_index > 0 or peak is None:
             break
         start = peak
 
