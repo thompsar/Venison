@@ -49,3 +49,16 @@ def test_fractal_dimension_held_fixed():
     # Sweep honors the µs settings.
     assert v.fit_points[0] == np.float64(s.raw_time[A.nearest_index(s.raw_time, 0.2)])
     assert v.fit_points[-1] <= s.cutoff - 0.8 + 1e-9
+
+
+def test_no_well_is_flagged():
+    assert not A.has_well(3 - X / 2)                       # falls steadily: no well
+    assert A.has_well(1 + 3 * np.exp(-X / 0.3) + 0.3 * np.exp(-((X - 2.2) / 0.4) ** 2))
+
+
+def test_background_preview_matches_analysis():
+    for model in ("3D", "Fractal"):
+        s = prepare_example(model, background_start=1.0)
+        summary = A.summarize_background(s, s.background_start, model)
+        np.testing.assert_allclose(summary.curve, s.background)
+        np.testing.assert_allclose(A.corrected_waveform(s, summary.curve), s.waveform)

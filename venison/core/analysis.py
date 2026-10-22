@@ -144,8 +144,17 @@ class BackgroundSummary:
     c: float
     d: float                    # 3 for the 3D model
     rmsd: float                 # fit residual over the background range
+    curve: np.ndarray | None = None          # the fit over the whole raw time axis
     alt: "BackgroundSummary | None" = None   # 3D fit on the same range, for a Fractal fit
     alt_curve: np.ndarray | None = None
+
+
+def corrected_waveform(spec, background) -> np.ndarray:
+    """The waveform `spec.background_correct` would produce for `background`,
+    without changing the spectrum."""
+    bg = background[spec.waveform_range]
+    normamp = (spec.zeroamp - bg[0]) / bg[0]
+    return (spec.real[spec.waveform_range] - bg) / bg / normamp
 
 
 def summarize_background(spec, start, model_name) -> BackgroundSummary:
@@ -162,14 +171,15 @@ def summarize_background(spec, start, model_name) -> BackgroundSummary:
 
     b3, c3 = optimize.curve_fit(bg3D, x, y)[0]
     curve3 = bg3D(spec.raw_time, b3, c3)
-    three_d = BackgroundSummary("3D", b3, c3, 3.0, rmsd_of(curve3))
+    three_d = BackgroundSummary("3D", b3, c3, 3.0, rmsd_of(curve3), curve3)
     if model_name != "Fractal":
         return three_d
     try:
         b, c, d = optimize.curve_fit(bgFractal, x, y, bounds=FRACTAL_FIT_BOUNDS)[0]
     except RuntimeError:
         return three_d  # same fallback the analysis uses
-    fractal = BackgroundSummary("Fractal", b, c, d, rmsd_of(bgFractal(spec.raw_time, b, c, d)))
+    curve = bgFractal(spec.raw_time, b, c, d)
+    fractal = BackgroundSummary("Fractal", b, c, d, rmsd_of(curve), curve)
     fractal.alt, fractal.alt_curve = three_d, curve3
     return fractal
 
@@ -282,10 +292,17 @@ def validate_background(spec, earliest_start: float = 0.2, shortest_fit: float =
     # DOF is approximate; it only needs to find the edges of the well.
     min_index, (lo, hi) = suggest_range(rmsd, dof=len(spec.waveform) - 3)
 
+    spec.validation_no_well = not has_well(rmsd)
     spec.validation_rmsd = rmsd
     spec.validation_min_index = min_index
     spec.validation_well = np.array([lo, hi])
     return validation_of(spec)
+
+
+def has_well(rmsd) -> bool:
+    """False when RMSD has no interior maximum: no well separates sensible
+    starts from the late-start tail, so the suggestion is just the lowest RMSD."""
+    return bool(len(argrelextrema(np.asarray(rmsd), np.greater)[0]))
 
 
 def suggest_range(rmsd, dof: int, stat_cutoff: float = 0.6) -> tuple[int, tuple[int, int]]:

@@ -151,6 +151,11 @@ class StabilityTab(Tab):
             return
         spec = session.spec
         if isinstance(result, Exception):
+            if idx != self._target:
+                # The slider moved on (maybe released) while this failed; refit
+                # the newer position, keeping any pending save for it.
+                self._update(save=False)
+                return
             if self._save_pending:  # mid-drag failures just skip a frame
                 self.app.notify(f"Stability refit failed: {result}", "error")
             self._save_pending = False

@@ -1,5 +1,6 @@
 """App-level behavior, driven headlessly (no browser)."""
 
+import asyncio
 import types
 
 import numpy as np
@@ -9,6 +10,7 @@ import venison.app as app_module
 from venison.app import VenisonApp, configure_panel
 from venison.core import analysis as A
 from venison.core.project import create_project
+from venison.core.session import SpectrumSession
 
 
 @pytest.fixture
@@ -71,3 +73,29 @@ def test_ingest_accepts_dsc_decoded_as_text(app, example_bytes):
     assert (app.project.path / "raw_data" / "third.DSC").read_bytes() == dsc
     assert app.session.name == "third"
     assert np.isfinite(app.session.spec.real).all()
+
+
+def test_result_discarded_if_spectrum_changed_mid_task(app, capsys):
+    applied = []
+
+    def work():
+        # A switch slipping in before the result is applied (e.g. in the tick
+        # between the task ending and its follow-up running).
+        app.session = SpectrumSession(app.project, "second")
+        return 42
+
+    asyncio.run(app.run_task("Working", work, applied.append))
+    assert applied == [] and "discarded" in capsys.readouterr().out
+    assert not app._spectrum_select.disabled and not app.busy
+
+    asyncio.run(app.run_task("Working", lambda: 7, applied.append))
+    assert applied == [7]
+
+
+def test_failed_refit_reruns_a_newer_slider_position(app):
+    tab = app.tabs[5]
+    reruns = []
+    tab._update = lambda save: reruns.append(save)
+    tab._target, tab._save_pending = 200, True     # released at 200 meanwhile
+    tab._show_refit(app.session, 150, RuntimeError("singular"))
+    assert reruns == [False] and tab._save_pending  # 200 gets refit and still saved

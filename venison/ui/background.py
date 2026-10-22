@@ -6,7 +6,7 @@ import numpy as np
 import panel as pn
 
 from venison.core import analysis as A
-from venison.core.background_models import fractal_d_at_limit
+from venison.core.background_models import FRACTAL_D_RANGE_TEXT, fractal_d_at_limit
 from venison.ui.common import (COLORS, TIME_LABEL, Tab, card, grid, hint, line, plot, points,
                                section, sidebar_widget, vline, zero_line)
 
@@ -55,9 +55,11 @@ class BackgroundTab(Tab):
         # 3D fit over the same range, shown for comparison when Fractal is selected.
         self._bg3d_src = line(p_bg, spec.raw_time, spec.raw_time * np.nan, COLORS["muted"],
                               width=1.5, line_dash="dashed")
+        # Background, start line and waveform always show this tab's own fit
+        # (set by _show_fit_info), even after Validation picks another.
         self._bg_src = line(p_bg, spec.raw_time, spec.background, COLORS["fit"], width=2)
         vline(p_bg, spec.cutoff, color=COLORS["ink"], dash="solid")
-        self._bg_line = vline(p_bg, spec.background_start, color=COLORS["data"])
+        self._bg_line = vline(p_bg, own_start, color=COLORS["data"])
 
         p_wave = plot(TIME_LABEL, "Form factor", height=300)
         zero_line(p_wave)
@@ -95,10 +97,9 @@ class BackgroundTab(Tab):
                 hint("Fit from the start to the cutoff. Refine it on the Validation tab."),
                 hint(_EQUATIONS), self._fit_info]
         if self.session.is_done("validation"):
-            side.append(hint("<b>Note:</b> the plots show the background chosen on the "
-                             "Validation tab; the slider and parameters above are this "
-                             "tab's own start. Changing anything here clears the "
-                             "validation choice."))
+            side.append(hint("<b>Note:</b> this tab shows its own fit. From the Validation "
+                             "tab on, the background chosen there is used; changing anything "
+                             "here clears that choice."))
         self._show_fit_info()
         return main, side
 
@@ -126,7 +127,8 @@ class BackgroundTab(Tab):
         warn = ""
         if s.model == "Fractal" and fractal_d_at_limit(s.d):
             warn = (f"<div class='vn-hint' style='padding:4px 0 0'><b>Warning:</b> d is at or near "
-                    f"its limit (1–5); the Fractal model may not suit this range.</div>")
+                    f"its limit ({FRACTAL_D_RANGE_TEXT}); the Fractal model may not suit this "
+                    f"range.</div>")
         elif self._model.value == "Fractal" and s.model == "3D":
             warn = ("<div class='vn-hint' style='padding:4px 0 0'><b>Note:</b> the Fractal "
                     "fit failed for this range, so 3D is used.</div>")
@@ -136,6 +138,9 @@ class BackgroundTab(Tab):
         self._bg3d_src.data = {"x": spec.raw_time,
                                "y": s.alt_curve if s.alt_curve is not None
                                else spec.raw_time * np.nan}
+        self._bg_src.data = {"x": spec.raw_time, "y": s.curve}
+        self._bg_line.location = float(start)
+        self._wave_src.data = {"x": spec.t, "y": A.corrected_waveform(spec, s.curve)}
 
     def _fit(self, start, model, save=True):
         spec = self.spec
@@ -167,7 +172,4 @@ class BackgroundTab(Tab):
         self._zero_fit.data = {"x": x, "y": A.gaussian(x, *spec.zero_fit)}
         self._zero_line.location = float(spec.zeropoint)
         self._zero_pt.data = {"x": [spec.zeropoint], "y": [spec.zeroamp]}
-        self._bg_src.data = {"x": spec.raw_time, "y": spec.background}
-        self._bg_line.location = float(spec.background_start)
-        self._wave_src.data = {"x": spec.t, "y": spec.waveform}
         self._show_fit_info()

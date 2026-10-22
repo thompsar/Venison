@@ -7,7 +7,7 @@ import panel as pn
 from bokeh.models import ColumnDataSource
 
 from venison.core import analysis as A
-from venison.core.background_models import fractal_d_at_limit
+from venison.core.background_models import FRACTAL_D_RANGE_TEXT, fractal_d_at_limit
 from venison.ui.common import (COLORS, DISTANCE_LABEL, TIME_LABEL, Tab, button, card, grid,
                                hint, line, plot, points, section, sidebar_widget, vline,
                                zero_line)
@@ -69,7 +69,8 @@ class ValidationTab(Tab):
                         hint("Left free, d swings from trial to trial and makes the RMSD "
                              "curve jump between bands.")]
                 if fractal_d_at_limit(d):
-                    out.append(hint(f"<b>Warning:</b> d = {d:.2f} is at or near its limit (1–5); the "
+                    out.append(hint(f"<b>Warning:</b> d = {d:.2f} is at or near its limit "
+                                    f"({FRACTAL_D_RANGE_TEXT}); the "
                                     "Fractal model may not suit this trace."))
         run = button("Run validation", "primary")
         run.on_click(self._on_run)
@@ -98,6 +99,11 @@ class ValidationTab(Tab):
         reset.on_click(self._on_reset)
         out = [section("Selection"), self._range, self._pick, pn.Row(to_min, reset, margin=0)]
         notes = []
+        if getattr(spec, "validation_no_well", False):
+            notes.append("<b>No RMSD well found:</b> the curve has no maximum separating "
+                         "sensible starts from the late-start tail, so the suggestion is "
+                         "simply the lowest RMSD and may sit in that tail. Pick the range "
+                         "by eye, or try a different sweep or background model.")
         settings = getattr(spec, "validation_settings", {}) or {}
         if settings.get("fallbacks"):
             notes.append(f"<b>{settings['fallbacks']} of {len(x)}</b> trials couldn't fit a "
