@@ -1,7 +1,2 @@
-import numpy as np
-
-def bg3D(x,b,c):
-    return b*np.exp(-x/c)
-
-def bgFractal(x,b,c,d):
-    return b*np.exp(-(np.sign(x)*np.abs(x)**(np.abs(d)/3))/c)
+# LEGACY SHIM for Venison.ipynb. Delete src/ when the notebook is retired.
+from venison.core.background_models import *  # noqa: F401,F403

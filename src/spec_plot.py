@@ -10,11 +10,11 @@ def spec_plot(xs = None ,ys = None ,colorlist=None,**kwargs):
     golden=1.61803
     height=400
     #plot_width=int(height*golden)
-    if 'plot_height' not in kwargs:
-        kwargs['plot_height']= height
-        kwargs['plot_width']=int(height*golden)
-    if 'plot_width' not in kwargs:
-        kwargs['plot_width']=int(kwargs['plot_height']*golden)
+    if 'height' not in kwargs:
+        kwargs['height']= height
+        kwargs['width']=int(height*golden)
+    if 'width' not in kwargs:
+        kwargs['width']=int(kwargs['height']*golden)
         
     myplot=figure(**kwargs)
     myplot.outline_line_alpha=0

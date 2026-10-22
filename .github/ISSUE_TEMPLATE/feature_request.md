@@ -1,20 +1,17 @@
 ---
 name: Feature request
-about: Suggest an idea for this project
+about: Suggest something Venison should do
 title: ''
-labels: ''
+labels: enhancement
 assignees: ''
 
 ---
 
-**Is your feature request related to a problem? Please describe.**
-A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+**What would you like to do?**
+The analysis or workflow you have in mind, and where in the app it would fit.
 
-**Describe the solution you'd like**
-A clear and concise description of what you want to happen.
+**How do you do it today?**
+For example in the notebook, by hand, or with another tool.
 
-**Describe alternatives you've considered**
-A clear and concise description of any alternative solutions or features you've considered.
-
-**Additional context**
-Add any other context or screenshots about the feature request here.
+**Anything else**
+References, example plots or screenshots.

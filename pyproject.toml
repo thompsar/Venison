@@ -1,0 +1,51 @@
+[project]
+name = "venison"
+dynamic = ["version"]
+description = "DEER waveform analysis (Tikhonov regularization and Monte Carlo sum-of-Gaussians) with a desktop GUI."
+authors = [
+  { name = "Andrew Thompson" }
+]
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"   # numpy 2.3 / scipy 1.16 need 3.11+
+
+# Pinned to a known-good, mutually tested set. Bokeh in particular is pinned
+# exactly: 3.8 changes how BokehJS is delivered to the browser, so it should
+# only be bumped deliberately, together with panel.
+dependencies = [
+  "panel==1.8.2",
+  "param==2.2.1",
+  "bokeh==3.7.3",
+  "holoviews==1.21.0",
+  "numpy==2.3.4",
+  "scipy==1.16.2",
+  "pandas==2.3.3",
+  "matplotlib==3.10.7",
+  "pywebview>=5.0,<6.0",
+  "pythonnet>=3.0.3,<3.1; sys_platform == 'win32'",
+  "clr-loader>=0.2.6,<0.3; sys_platform == 'win32'",
+]
+
+[project.scripts]
+venison = "venison.launcher:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+notebook = ["ipywidgets>=8", "jupyterlab"]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["venison*"]
+
+[tool.setuptools.dynamic]
+version = { attr = "venison.__version__" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.setuptools.package-data]
+"venison.assets" = ["*.css"]

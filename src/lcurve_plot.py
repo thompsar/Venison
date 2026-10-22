@@ -5,11 +5,11 @@ def lcurve_plot(datalist,colorlist=None,**kwargs):
     golden=1.61803
     height=400
     #plot_width=int(height*golden)
-    if 'plot_height' not in kwargs:
-        kwargs['plot_height']= height
-        kwargs['plot_width']=int(height*golden)
-    if 'plot_width' not in kwargs:
-        kwargs['plot_width']=int(kwargs['plot_height']*golden)
+    if 'height' not in kwargs:
+        kwargs['height']= height
+        kwargs['width']=int(height*golden)
+    if 'width' not in kwargs:
+        kwargs['width']=int(kwargs['height']*golden)
         
     myplot=figure(x_axis_type = 'log', y_axis_type = 'log', **kwargs)
     myplot.outline_line_alpha=0
@@ -35,9 +35,9 @@ def lcurve_plot(datalist,colorlist=None,**kwargs):
 
     if not colorlist: #if colorlist is not present, use default scheme
         for i in range(int(len(datalist)/2)):
-            myplot.circle(datalist[i*2],datalist[i*2+1], color=mycolors(i))
+            myplot.circle(datalist[i*2], datalist[i*2+1], color=mycolors(i))
         return myplot
     else:
         for i in range(int(len(datalist)/2)):
-            myplot.circle(datalist[i*2],datalist[i*2+1], color=colorlist[i])
+            myplot.circle(datalist[i*2], datalist[i*2+1], color=colorlist[i])
         return myplot

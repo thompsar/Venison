@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use Venison in your research, please cite it as below."
+title: "Venison: DEER waveform analysis"
+abstract: >-
+  Analysis of double electron-electron resonance (DEER) data: background
+  correction and validation, Tikhonov regularization, and Monte Carlo error
+  analysis of sum-of-Gaussians distance distribution models, with a desktop
+  app for the full workflow.
+type: software
+authors:
+  - family-names: Thompson
+    given-names: Andrew
+    orcid: "https://orcid.org/0000-0001-8537-6776"
+    affiliation: "University of Minnesota"
+version: 2026.10.0
+license: MIT
+repository-code: "https://github.com/thompsar/Venison"
+keywords:
+  - DEER
+  - PELDOR
+  - EPR
+  - distance distribution
+  - Tikhonov regularization
