@@ -9,7 +9,7 @@ are the version's CHANGELOG section (they are public, on GitHub).
     python scripts/release.py             # preflight, show plan, confirm, release
     python scripts/release.py --yes       # skip the confirmation prompt
 
-Run it from a clean, up-to-date `master` after the release PR has merged.
+Run it from a clean, up-to-date `main` after the release PR has merged.
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ import tempfile
 from pathlib import Path
 
 REPO = "thompsar/Venison"
-BRANCH = "master"
+BRANCH = "main"
 ROOT = Path(__file__).resolve().parent.parent
 VERSION_FILE = ROOT / "venison" / "__init__.py"
 CHANGELOG = ROOT / "CHANGELOG.md"

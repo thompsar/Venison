@@ -2,11 +2,11 @@
 
 ## Model
 
-- `master` is the trunk; PRs merge into it without touching the version.
+- `main` is the trunk; PRs merge into it without touching the version.
 - `__version__` in `venison/__init__.py` is the last **released** version and
   changes only when cutting a release. `pyproject.toml` reads it, so that is
   the one edit.
-- A release is an annotated tag `vYYYY.M.PATCH` on `master` plus a GitHub
+- A release is an annotated tag `vYYYY.M.PATCH` on `main` plus a GitHub
   Release whose notes are that version's section of `CHANGELOG.md`.
   Collaborators install from these releases (see INSTALL.md).
 
@@ -21,14 +21,14 @@
 1. In a PR: set `__version__`, add a `## <version>` section at the top of
    `CHANGELOG.md` written for users (what's new, what's fixed, what changed in
    how they work), and merge it.
-2. On an up-to-date `master`:
+2. On an up-to-date `main`:
 
    ```bash
    python scripts/release.py --check    # preflight only
    python scripts/release.py            # tag, push the tag, publish the release
    ```
 
-   The script refuses to run off `master`, with uncommitted changes, out of
+   The script refuses to run off `main`, with uncommitted changes, out of
    sync with `origin`, without a changelog section, or if the tag exists. It
    warns if the PATCH number looks off.
 

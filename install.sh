@@ -1,14 +1,14 @@
 #!/bin/sh
 # Install or update Venison to the latest release (macOS or Linux):
 #
-#   curl -LsSf https://raw.githubusercontent.com/thompsar/Venison/master/install.sh | sh
+#   curl -LsSf https://raw.githubusercontent.com/thompsar/Venison/main/install.sh | sh
 #
 # Run the same line again to update. Venison gets its own Python 3.12
 # environment via uv (installed first if missing); nothing else on the system
 # changes. Then type `venison` in a new Terminal window.
 #
 # VENISON_REF overrides what gets installed, e.g. VENISON_REF=tags/v2026.10.0
-# or VENISON_REF=heads/master.
+# or VENISON_REF=heads/main.
 set -eu
 
 REPO="thompsar/Venison"

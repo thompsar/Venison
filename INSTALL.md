@@ -10,7 +10,7 @@ Open **Terminal** (in Applications → Utilities, or search for it with
 Spotlight), paste this line, and press Return:
 
 ```bash
-curl -LsSf https://raw.githubusercontent.com/thompsar/Venison/master/install.sh | sh
+curl -LsSf https://raw.githubusercontent.com/thompsar/Venison/main/install.sh | sh
 ```
 
 It installs the latest release of Venison, together with
@@ -34,7 +34,7 @@ When a new version is out, Venison shows a notice at the top of its window.
 Quit Venison and run the **same install line** again:
 
 ```bash
-curl -LsSf https://raw.githubusercontent.com/thompsar/Venison/master/install.sh | sh
+curl -LsSf https://raw.githubusercontent.com/thompsar/Venison/main/install.sh | sh
 ```
 
 Your projects aren't affected: they live in their own folder
@@ -51,8 +51,8 @@ Your projects aren't affected: they live in their own folder
    project's `results/` folder and a reloadable `.npz` to `processed/`.
 
 To try it first, download the example spectrum's
-[`.DSC`](https://github.com/thompsar/Venison/raw/master/data/raw/example_2dDEER.DSC)
-and [`.DTA`](https://github.com/thompsar/Venison/raw/master/data/raw/example_2dDEER.DTA)
+[`.DSC`](https://github.com/thompsar/Venison/raw/main/data/raw/example_2dDEER.DSC)
+and [`.DTA`](https://github.com/thompsar/Venison/raw/main/data/raw/example_2dDEER.DTA)
 files.
 
 ## If something goes wrong

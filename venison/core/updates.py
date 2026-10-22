@@ -8,7 +8,7 @@ import re
 import urllib.request
 
 RELEASES_URL = "https://api.github.com/repos/thompsar/Venison/releases?per_page=100"
-INSTALL_LINE = ("curl -LsSf https://raw.githubusercontent.com/thompsar/Venison/master/"
+INSTALL_LINE = ("curl -LsSf https://raw.githubusercontent.com/thompsar/Venison/main/"
                 "install.sh | sh")
 _CALVER = re.compile(r"v?(\d+)\.(\d+)\.(\d+)")
 _cache: dict[str, str | None] = {}  # one check per process, shared by all windows

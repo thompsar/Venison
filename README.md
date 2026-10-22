@@ -9,7 +9,7 @@ On a Mac or Linux, paste this into Terminal to install or update to the latest
 release, then type `venison`:
 
 ```bash
-curl -LsSf https://raw.githubusercontent.com/thompsar/Venison/master/install.sh | sh
+curl -LsSf https://raw.githubusercontent.com/thompsar/Venison/main/install.sh | sh
 ```
 
 Venison gets its own Python environment (via [uv](https://docs.astral.sh/uv/)),
