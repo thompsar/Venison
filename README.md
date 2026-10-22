@@ -32,6 +32,7 @@ for the current spectrum. Changing an earlier step clears the steps after it.
 | Gaussians | Fit 1–5 Gaussian models and compare them by BIC |
 | Monte Carlo | Map the error surface of the chosen model |
 | Results | Best fit, confidence bounds, and export |
+| Compare | Overlay the project's spectra: waveforms, fits and distance distributions |
 | Console | Log output |
 
 ## Projects

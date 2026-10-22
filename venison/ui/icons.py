@@ -9,6 +9,7 @@ _PATHS = {
     "stability": '<path d="M4 20V4"/><path d="M4 20h16"/><path d="M6 18c2-9 4-11 6-6l1 2"/><path d="M15 6v12" stroke-dasharray="2 2"/>',
     "gaussians": '<path d="M3 19h18"/><path d="M4 19c3 0 3.5-12 6-12s3 12 6 12"/><path d="M12 19c2 0 2.5-6 4.5-6s2.5 6 4 6"/>',
     "montecarlo": '<circle cx="7" cy="15" r="1"/><circle cx="10" cy="10" r="1"/><circle cx="12.5" cy="13" r="1"/><circle cx="15" cy="8" r="1"/><circle cx="17" cy="12" r="1"/><circle cx="9" cy="17.5" r="1"/><path d="M4 4v16h16"/>',
+    "compare": '<path d="M3 19h18"/><path d="M4 18c3 0 3-11 6-11s3 11 6 11"/><path d="M8 18c3 0 3-7 6-7s3 7 6 7" stroke-dasharray="2.2 2"/>',
     "results": '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9.5h16M10 9.5V20"/>',
     "console": '<rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="M7.5 10l2.5 2-2.5 2M12 15h4"/>',
 }

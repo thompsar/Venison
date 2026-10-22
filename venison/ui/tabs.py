@@ -1,6 +1,7 @@
 """Rail order. Analysis tabs follow the notebook's workflow order."""
 
 from venison.ui.background import BackgroundTab
+from venison.ui.compare import CompareTab
 from venison.ui.console import ConsoleTab
 from venison.ui.gaussians import GaussiansTab
 from venison.ui.monte_carlo import MonteCarloTab
@@ -21,5 +22,6 @@ TAB_CLASSES = [
     GaussiansTab,
     MonteCarloTab,
     ResultsTab,
+    CompareTab,
     ConsoleTab,  # last: pinned to the bottom of the rail
 ]
